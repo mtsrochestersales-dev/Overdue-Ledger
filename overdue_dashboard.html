@@ -1,0 +1,3484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Monster Tree Service — Overdue Invoice Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=JetBrains+Mono:wght@400;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --ink:        #1a1612;
+    --ink-soft:   #3d342b;
+    --paper:      #f5efe4;
+    --paper-2:    #ebe2d2;
+    --bark:       #2d5016;
+    --bark-deep:  #1f3a0e;
+    --leaf:       #5a7a3a;
+    --amber:      #c67c00;
+    --rust:       #9a3a14;
+    --rust-deep:  #6b2810;
+    --shadow:     rgba(26, 22, 18, 0.12);
+    --shadow-2:   rgba(26, 22, 18, 0.25);
+    --line:       #c9bca3;
+    --line-soft:  #ddd1b8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(45, 80, 22, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(198, 124, 0, 0.05) 0%, transparent 50%);
+  }
+  .display { font-family: 'Fraunces', serif; font-weight: 900; letter-spacing: -0.02em; }
+  .mono    { font-family: 'JetBrains Mono', monospace; }
+
+  /* ========== HEADER ========== */
+  header.masthead {
+    border-bottom: 3px double var(--ink);
+    padding: 28px 40px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    backdrop-filter: blur(8px);
+    background: rgba(245, 239, 228, 0.96);
+  }
+  .masthead-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: end;
+    gap: 30px;
+  }
+  .masthead-left { font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-soft); }
+  .masthead-left .upload-date { display: block; font-weight: 600; color: var(--bark-deep); margin-top: 4px; font-size: 12px; }
+  .masthead-title {
+    text-align: center;
+    font-size: 42px;
+    line-height: 0.95;
+    color: var(--ink);
+  }
+  .masthead-title .sub {
+    display: block;
+    font-family: 'Inter Tight', sans-serif;
+    font-weight: 400;
+    font-style: italic;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+    margin-top: 4px;
+  }
+  .masthead-right { text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--ink-soft); }
+  .masthead-right .total { font-family: 'Fraunces', serif; font-weight: 900; font-size: 22px; color: var(--rust-deep); letter-spacing: -0.01em; text-transform: none; display: block; margin-top: 2px; }
+
+  /* ========== TAB NAV ========== */
+  nav.tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 0 40px;
+    position: sticky;
+    top: 105px;
+    z-index: 49;
+    background: rgba(245, 239, 228, 0.96);
+    backdrop-filter: blur(8px);
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 14px 22px 12px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--ink); background: rgba(45, 80, 22, 0.04); }
+  .tab-btn.active { color: var(--bark-deep); border-bottom-color: var(--bark); }
+  .tab-btn .badge {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ========== MAIN ========== */
+  main { padding: 32px 40px 80px; max-width: 1600px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadein 0.25s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  /* ========== SECTIONS ========== */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 22px; letter-spacing: -0.01em; }
+  .section-meta { font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); }
+
+  /* ========== UPLOAD ZONE ========== */
+  .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 36px; }
+  .upload-card {
+    border: 2px dashed var(--line);
+    border-radius: 4px;
+    padding: 28px;
+    text-align: center;
+    background: rgba(255,255,255,0.4);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .upload-card.dragover { border-color: var(--bark); background: rgba(45, 80, 22, 0.07); border-style: solid; }
+  .upload-card h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .upload-card p { font-size: 12px; color: var(--ink-soft); margin-bottom: 16px; line-height: 1.5; }
+  .upload-card .filespec { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--ink-soft); margin-top: 12px; letter-spacing: 0.04em; }
+  .upload-card .last-uploaded {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--bark-deep);
+    margin-top: 12px;
+    padding: 6px 10px;
+    background: rgba(45, 80, 22, 0.08);
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .btn {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 10px 22px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border-radius: 2px;
+  }
+  .btn:hover { background: var(--bark-deep); transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+  .btn.secondary:hover { background: var(--ink); color: var(--paper); }
+  .btn.rust { background: var(--rust); }
+  .btn.rust:hover { background: var(--rust-deep); }
+  .btn.small { padding: 6px 12px; font-size: 10px; }
+  input[type="file"] { display: none; }
+
+  /* ========== METRIC CARDS ========== */
+  .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 32px; }
+  .metric {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--bark);
+    padding: 18px 20px;
+    border-radius: 2px;
+  }
+  .metric.rust { border-left-color: var(--rust); }
+  .metric.amber { border-left-color: var(--amber); }
+  .metric.leaf { border-left-color: var(--leaf); }
+  .metric .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); margin-bottom: 8px; }
+  .metric .value { font-family: 'Fraunces', serif; font-weight: 900; font-size: 28px; letter-spacing: -0.02em; line-height: 1; }
+  .metric .sub { font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+
+  /* ========== TABLES ========== */
+  .table-wrap { background: rgba(255,255,255,0.4); border: 1px solid var(--line); border-radius: 2px; overflow: auto; max-height: calc(100vh - 280px); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--ink); color: var(--paper); position: sticky; top: 0; z-index: 5; }
+  thead th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:last-child { border-right: none; }
+  thead th .sort-ind { opacity: 0.4; margin-left: 4px; font-size: 9px; }
+  thead th.sorted .sort-ind { opacity: 1; color: var(--amber); }
+  tbody tr { border-bottom: 1px solid var(--line-soft); transition: background 0.1s ease; }
+  tbody tr:hover { background: rgba(198, 124, 0, 0.06); }
+  tbody tr.in-collections { background: rgba(154, 58, 20, 0.05); }
+  tbody tr.in-collections:hover { background: rgba(154, 58, 20, 0.1); }
+  tbody td { padding: 10px 14px; vertical-align: top; }
+  tbody td.num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+  tbody td.client { font-weight: 600; }
+  .empty-state { padding: 60px 20px; text-align: center; color: var(--ink-soft); }
+  .empty-state h2 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 24px; margin-bottom: 8px; color: var(--ink); }
+  .empty-state p { font-size: 13px; max-width: 480px; margin: 0 auto; }
+
+  /* ========== FILTERS ========== */
+  .filter-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-bar input[type="text"], .filter-bar select {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 8px 12px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    min-width: 180px;
+  }
+  .filter-bar input[type="text"]:focus, .filter-bar select:focus { outline: none; border-color: var(--bark); }
+  .filter-bar .filter-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-soft); }
+  .actions-right { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ========== NOTES & COLLECTIONS ========== */
+  .notes-cell { min-width: 280px; max-width: 380px; }
+  .notes-text { font-size: 12px; line-height: 1.45; color: var(--ink-soft); white-space: pre-wrap; word-wrap: break-word; }
+  .notes-edit-btn {
+    background: none; border: 1px solid var(--line);
+    padding: 2px 8px; font-size: 10px;
+    cursor: pointer; border-radius: 2px;
+    margin-top: 4px; color: var(--ink-soft);
+    font-family: 'Inter Tight', sans-serif;
+  }
+  .notes-edit-btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .collections-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--rust); color: var(--paper);
+    padding: 2px 8px; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase;
+    border-radius: 2px; white-space: nowrap;
+    font-family: 'Inter Tight', sans-serif;
+  }
+  .collections-toggle {
+    background: none; border: 1px solid var(--line);
+    padding: 4px 8px; font-size: 10px;
+    cursor: pointer; border-radius: 2px;
+    color: var(--ink-soft);
+    font-family: 'Inter Tight', sans-serif;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    white-space: nowrap;
+  }
+  .collections-toggle:hover { background: var(--rust); color: var(--paper); border-color: var(--rust); }
+  .collections-cell { white-space: nowrap; min-width: 130px; }
+  .collections-cell .date-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--rust-deep); display: block; margin-top: 2px; }
+
+  /* ========== MODAL ========== */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26, 22, 18, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    padding: 28px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px var(--shadow-2);
+  }
+  .modal h3 { font-family: 'Fraunces', serif; font-weight: 700; font-size: 22px; margin-bottom: 4px; }
+  .modal .modal-sub { font-size: 12px; color: var(--ink-soft); margin-bottom: 18px; }
+  .modal label.field { display: block; margin-bottom: 14px; }
+  .modal label.field .lbl {
+    display: block; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 6px; font-weight: 600;
+  }
+  .modal textarea, .modal input[type="date"], .modal input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 10px 12px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.5;
+    background: rgba(255,255,255,0.5);
+  }
+  .modal textarea { min-height: 180px; resize: vertical; }
+  .modal textarea:focus, .modal input:focus { outline: none; border-color: var(--bark); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; align-items: center; }
+  .modal-actions .left { margin-right: auto; }
+  .modal .checkbox-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    padding: 10px 12px; background: rgba(154, 58, 20, 0.06);
+    border: 1px solid rgba(154, 58, 20, 0.2); border-radius: 2px;
+  }
+  .modal .checkbox-row input { width: 16px; height: 16px; cursor: pointer; }
+  .modal .checkbox-row label { font-size: 13px; cursor: pointer; font-weight: 500; }
+
+  /* ========== PIVOT TABLES ========== */
+  .pivot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  @media (max-width: 1100px) { .pivot-grid { grid-template-columns: 1fr; } }
+  .pivot-block { background: rgba(255,255,255,0.4); border: 1px solid var(--line); padding: 0; border-radius: 2px; }
+  .pivot-block h4 {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 18px;
+    font-family: 'Inter Tight', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .pivot-block .pivot-scroll { max-height: 520px; overflow-y: auto; }
+  .pivot-block .pivot-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 14px;
+    padding: 9px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: center;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .pivot-block .pivot-row:last-child { border-bottom: none; }
+  .pivot-block .pivot-row:hover { background: rgba(198, 124, 0, 0.06); }
+  .pivot-block .pivot-row.totalrow { font-weight: 700; background: var(--paper-2); border-top: 2px solid var(--ink); cursor: default; }
+  .pivot-block .pivot-row .bar {
+    grid-column: 1 / -1;
+    height: 3px;
+    background: var(--bark);
+    border-radius: 1px;
+    margin-top: 4px;
+  }
+  .pivot-block .pivot-row .name { font-weight: 500; }
+  .pivot-block .pivot-row .amt { font-family: 'JetBrains Mono', monospace; font-size: 12px; text-align: right; min-width: 100px; }
+  .pivot-block .pivot-row .count { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft); min-width: 50px; text-align: right; }
+
+  /* ========== AGING REPORT ========== */
+  .aging-wrap { overflow-x: auto; }
+  .aging-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(12, minmax(75px, 1fr)) 90px;
+    gap: 0;
+    background: rgba(255,255,255,0.4);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    min-width: 1000px;
+  }
+  .aging-grid .cell {
+    padding: 8px 6px;
+    border-right: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line-soft);
+    text-align: right;
+    cursor: pointer;
+  }
+  .aging-grid .cell.head { background: var(--ink); color: var(--paper); font-weight: 600; text-align: center; cursor: default; font-size: 10px; letter-spacing: 0.05em; }
+  .aging-grid .cell.yearlabel { background: var(--paper-2); font-weight: 700; text-align: center; font-size: 12px; cursor: default; }
+  .aging-grid .cell.totalcol { background: var(--paper-2); font-weight: 700; cursor: pointer; }
+  .aging-grid .cell.totalrow { background: var(--paper-2); font-weight: 700; cursor: pointer; }
+  .aging-grid .cell.empty { color: var(--line); cursor: default; }
+  .aging-grid .cell.hot { background: rgba(154, 58, 20, 0.12); color: var(--rust-deep); font-weight: 600; }
+  .aging-grid .cell.has-data:hover { background: var(--amber); color: var(--paper); }
+  .aging-legend { display: flex; gap: 18px; margin-top: 12px; font-size: 11px; color: var(--ink-soft); align-items: center; flex-wrap: wrap; }
+  .aging-legend .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 1px; margin-right: 5px; vertical-align: middle; }
+
+  /* ========== MONTHLY REPORT ========== */
+  .month-list { display: grid; gap: 8px; margin-bottom: 32px; }
+  .month-row {
+    background: rgba(255,255,255,0.4);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 0;
+    overflow: hidden;
+  }
+  .month-row-header {
+    display: grid;
+    grid-template-columns: 30px 1fr auto auto;
+    align-items: center;
+    padding: 12px 18px;
+    cursor: pointer;
+    gap: 14px;
+    transition: background 0.15s ease;
+  }
+  .month-row-header:hover { background: rgba(198, 124, 0, 0.06); }
+  .month-row.open .month-row-header { background: var(--ink); color: var(--paper); }
+  .month-row.open .month-row-header .sub { color: rgba(245, 239, 228, 0.7); }
+  .month-row-header .caret {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    transition: transform 0.2s ease;
+  }
+  .month-row.open .caret { transform: rotate(90deg); }
+  .month-row-header .label { font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px; letter-spacing: -0.01em; }
+  .month-row-header .sub { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+  .month-row-header .amt { font-family: 'Fraunces', serif; font-weight: 700; font-size: 18px; }
+  .month-row-header .ct { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft); }
+  .month-row.open .month-row-header .ct { color: rgba(245, 239, 228, 0.7); }
+  .month-detail { display: none; padding: 0; border-top: 1px solid var(--line); overflow-x: auto; }
+  .month-row.open .month-detail { display: block; }
+  .month-detail table { font-size: 12px; }
+  .month-detail thead { background: var(--paper-2); position: static; }
+  .month-detail thead th { color: var(--ink); border-color: var(--line-soft); }
+
+  /* ========== STATUS BAR ========== */
+  .status-bar {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 18px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    border-radius: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 200;
+    max-width: 360px;
+    box-shadow: 0 6px 20px var(--shadow-2);
+  }
+  .status-bar.show { opacity: 1; }
+  .status-bar.error { background: var(--rust); }
+  .status-bar.success { background: var(--bark-deep); }
+
+  /* ========== UTILITIES ========== */
+  .footnote { font-size: 10px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 6px; font-style: italic; }
+  .pill {
+    display: inline-block; padding: 2px 8px; font-size: 10px;
+    background: var(--paper-2); color: var(--ink); border-radius: 10px;
+    letter-spacing: 0.04em; font-weight: 600;
+  }
+  .pill.rust { background: var(--rust); color: var(--paper); }
+  .pill.bark { background: var(--bark); color: var(--paper); }
+
+  /* ========== HISTORY ========== */
+  .history-list { background: rgba(255,255,255,0.4); border: 1px solid var(--line); border-radius: 2px; }
+  .history-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: center;
+    font-size: 13px;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .when { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+  .history-item .what { font-size: 12px; }
+  .history-item .delta { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .history-item .delta .added { color: var(--bark-deep); }
+  .history-item .delta .removed { color: var(--rust); }
+  .history-item .delta .updated { color: var(--amber); }
+
+  /* spinner */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--line);
+    border-top-color: var(--bark);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead-grid">
+    <div class="masthead-left">
+      <span>Monster Tree Service</span> · Rochester
+      <span class="upload-date" id="lastUploadDisplay">No data yet</span>
+    </div>
+    <h1 class="masthead-title display">
+      Overdue Ledger
+      <span class="sub">accounts receivable · office workspace</span>
+    </h1>
+    <div class="masthead-right">
+      <div style="margin-bottom: 8px; font-size: 10px; letter-spacing: 0.12em;">
+        <span id="userInfo" style="text-transform: none; letter-spacing: normal; font-weight: 600; color: var(--bark-deep);"></span>
+        <button class="btn small" id="signInBtn" style="margin-left: 4px;">Sign in with Google</button>
+        <button class="btn small secondary" id="signOutBtn" style="display:none; margin-left: 4px;">Sign Out</button>
+        <button class="btn small secondary" id="refreshBtn" style="margin-left: 4px;" title="Refresh from Google Sheet">↻ Refresh</button>
+      </div>
+      Total Open Balance
+      <span class="total" id="grandTotal">$0.00</span>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="ledger">Ledger <span class="badge" id="ledgerCount">0</span></button>
+  <button class="tab-btn" data-tab="summary">Summary</button>
+  <button class="tab-btn" data-tab="aging">Aging Matrix</button>
+  <button class="tab-btn" data-tab="monthly">Monthly Report</button>
+  <button class="tab-btn" data-tab="collections">Collections <span class="badge" id="collectionsCount">0</span></button>
+  <button class="tab-btn" data-tab="demand">Demand Letters <span class="badge" id="demandCount">0</span></button>
+  <button class="tab-btn" data-tab="manage">Data &amp; Upload</button>
+</nav>
+
+<main>
+
+  <!-- ============ LEDGER TAB ============ -->
+  <section class="panel active" data-panel="ledger">
+    <div class="filter-bar">
+      <span class="filter-label">Search</span>
+      <input type="text" id="filterText" placeholder="Client, invoice, notes, sales rep…" />
+      <span class="filter-label">Sales Rep</span>
+      <select id="filterRep"><option value="">All</option></select>
+      <span class="filter-label">Year</span>
+      <select id="filterYear"><option value="">All</option></select>
+      <span class="filter-label">Status</span>
+      <select id="filterStatus">
+        <option value="">All</option>
+        <option value="collections">In Collections</option>
+        <option value="not-collections">Not in Collections</option>
+        <option value="demand-sent">Demand Letter Sent</option>
+        <option value="demand-not-sent">No Demand Letter</option>
+      </select>
+      <div class="actions-right">
+        <button class="btn small secondary" id="exportLedgerCSV">Export CSV</button>
+        <button class="btn small secondary" id="exportLedgerXLSX">Export XLSX</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th data-sort="date">Inv. Date <span class="sort-ind">↕</span></th>
+            <th data-sort="num">Invoice # <span class="sort-ind">↕</span></th>
+            <th data-sort="name">Client <span class="sort-ind">↕</span></th>
+            <th data-sort="dueDate">Due Date <span class="sort-ind">↕</span></th>
+            <th data-sort="amount">Amount <span class="sort-ind">↕</span></th>
+            <th data-sort="openBalance">Open Bal. <span class="sort-ind">↕</span></th>
+            <th data-sort="salesRep">Sales Rep <span class="sort-ind">↕</span></th>
+            <th data-sort="reminders">Reminders <span class="sort-ind">↕</span></th>
+            <th data-sort="collections">Collections <span class="sort-ind">↕</span></th>
+            <th data-sort="notes">Notes <span class="sort-ind">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+      <div id="ledgerEmpty" class="empty-state" style="display:none">
+        <h2>No invoices yet</h2>
+        <p>Head to the Data &amp; Upload tab and import a QBO Customer Balance Detail file to get started.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SUMMARY TAB ============ -->
+  <section class="panel" data-panel="summary">
+    <div class="metrics-row" id="summaryMetrics"></div>
+    <div class="pivot-grid">
+      <div class="pivot-block">
+        <h4>Total Open Balance by Client</h4>
+        <div class="pivot-scroll" id="pivotByClient"></div>
+      </div>
+      <div class="pivot-block">
+        <h4>Total Open Balance by Sales Rep</h4>
+        <div class="pivot-scroll" id="pivotBySalesRep"></div>
+      </div>
+    </div>
+    <div class="footnote">Click any client or sales rep to filter the ledger.</div>
+  </section>
+
+  <!-- ============ AGING TAB ============ -->
+  <section class="panel" data-panel="aging">
+    <div class="section-header">
+      <h2 class="section-title">Open Balance Aged by Invoice Date</h2>
+      <span class="section-meta">Year × Month · Click a cell to drill in</span>
+    </div>
+    <div class="aging-wrap"><div id="agingMatrix"></div></div>
+    <div class="aging-legend">
+      <span><span class="swatch" style="background: rgba(154, 58, 20, 0.12); border: 1px solid var(--rust);"></span>Older than 12 months</span>
+      <span><span class="swatch" style="background: var(--paper-2);"></span>Year / Total</span>
+      <span style="margin-left:auto" class="footnote">Buckets use Invoice Date (Date column from QBO).</span>
+    </div>
+  </section>
+
+  <!-- ============ MONTHLY TAB ============ -->
+  <section class="panel" data-panel="monthly">
+    <div class="section-header">
+      <h2 class="section-title">Past Months — Drill Down</h2>
+      <span class="section-meta">Click any month to view its invoices</span>
+    </div>
+    <div class="month-list" id="monthList"></div>
+  </section>
+
+  <!-- ============ COLLECTIONS TAB ============ -->
+  <section class="panel" data-panel="collections">
+    <div class="section-header">
+      <h2 class="section-title">Invoices in Collections</h2>
+      <span class="section-meta" id="collectionsMeta">0 invoices · $0.00 total</span>
+    </div>
+    <div class="table-wrap">
+      <table id="collectionsTable">
+        <thead>
+          <tr>
+            <th>Sent to Coll.</th>
+            <th>Inv. Date</th>
+            <th>Invoice #</th>
+            <th>Client</th>
+            <th>Open Bal.</th>
+            <th>Sales Rep</th>
+            <th>Days in Coll.</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="collectionsBody"></tbody>
+      </table>
+      <div id="collectionsEmpty" class="empty-state" style="display:none">
+        <h2>No invoices in collections</h2>
+        <p>Mark an invoice as "in collections" from the Ledger tab — the date is captured automatically.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DEMAND LETTERS TAB ============ -->
+  <section class="panel" data-panel="demand">
+    <div class="section-header">
+      <h2 class="section-title">Demand Letters Sent</h2>
+      <span class="section-meta" id="demandMeta">0 invoices · $0.00 total</span>
+    </div>
+    <div class="table-wrap">
+      <table id="demandTable">
+        <thead>
+          <tr>
+            <th>Date Sent</th>
+            <th>Client</th>
+            <th>Invoice #</th>
+            <th>Inv. Date</th>
+            <th>Open Bal.</th>
+            <th>Sales Rep</th>
+            <th>Days Since</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="demandBody"></tbody>
+      </table>
+      <div id="demandEmpty" class="empty-state" style="display:none">
+        <h2>No demand letters sent yet</h2>
+        <p>From any invoice in the Ledger, click the row to open the editor, then click "Generate &amp; Print Demand Letter." The system tracks who got a letter and when.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MANAGE TAB ============ -->
+  <section class="panel" data-panel="manage">
+    <div class="section-header">
+      <h2 class="section-title">Google Sheet Backend</h2>
+      <span class="section-meta">Shared storage for the whole office</span>
+    </div>
+    <div style="background:rgba(45,80,22,0.05); border:1px solid var(--bark); padding:16px 20px; margin-bottom:32px; border-radius:2px; font-size:13px; line-height:1.6;">
+      <p style="margin-bottom:10px;"><strong>Sheet:</strong> <a id="sheetLink" href="#" target="_blank" style="color:var(--bark-deep); font-family:'JetBrains Mono',monospace; font-size:11px;">Not configured yet</a></p>
+      <p style="margin-bottom:14px;">All data lives in this Google Sheet. Share it with the office (Editor access). Anyone signed in to a Google account with edit access to this sheet sees the same data.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn small" id="openSheetBtn">Open Sheet in New Tab</button>
+        <button class="btn small secondary" id="reconfigureBtn">Reconfigure Client ID</button>
+        <button class="btn small secondary" id="changeSheetBtn">Use Different Sheet</button>
+      </div>
+    </div>
+    <div class="section-header">
+      <h2 class="section-title">Import Data</h2>
+      <span class="section-meta">Notes &amp; collection status are preserved on every upload</span>
+    </div>
+
+    <div class="upload-grid" style="grid-template-columns: 1fr 1fr;">
+      <div class="upload-card" id="dropQBO">
+        <h3>① QBO Customer Balance Detail</h3>
+        <p>Columns A–H from QuickBooks: Date, Transaction Type, Num, Name, Memo/Description, Due Date, Amount, Open Balance.</p>
+        <input type="file" id="fileQBO" accept=".xlsx,.xls,.csv" />
+        <label for="fileQBO" class="btn">Choose QBO File</label>
+        <div class="filespec">.xlsx · .xls · .csv accepted</div>
+        <div id="qboLastUpload" class="last-uploaded" style="display:none"></div>
+      </div>
+      <div class="upload-card" id="dropRep">
+        <h3>② Sales Rep Mapping</h3>
+        <p>Two columns: <span class="mono">Ref #</span> and <span class="mono">Sales Rep(s)</span>. Maps reps onto invoices by invoice number.</p>
+        <input type="file" id="fileRep" accept=".xlsx,.xls,.csv" />
+        <label for="fileRep" class="btn">Choose Sales Rep File</label>
+        <div class="filespec">.xlsx · .xls · .csv accepted</div>
+        <div id="repLastUpload" class="last-uploaded" style="display:none"></div>
+      </div>
+      <div class="upload-card" id="dropContact">
+        <h3>③ Customer Contact List</h3>
+        <p>Customer mailing addresses for demand letters. Expected columns: <span class="mono">Customer</span>, Billing Street/City/ZIP. Matched by client name.</p>
+        <input type="file" id="fileContact" accept=".xlsx,.xls,.csv" />
+        <label for="fileContact" class="btn">Choose Contact File</label>
+        <div class="filespec">.xlsx · .xls · .csv accepted</div>
+        <div id="contactLastUpload" class="last-uploaded" style="display:none"></div>
+      </div>
+      <div class="upload-card" id="dropEmail">
+        <h3>④ Email Follow-Up</h3>
+        <p>Counts of <em>Invoice Due Reminder</em> and <em>Invoice Overdue Reminder</em> emails per invoice. Expected columns: <span class="mono">Ref #</span>, <span class="mono">Template</span>, <span class="mono">Sent At</span>.</p>
+        <input type="file" id="fileEmail" accept=".xlsx,.xls,.csv" />
+        <label for="fileEmail" class="btn">Choose Email File</label>
+        <div class="filespec">.xlsx · .xls · .csv accepted</div>
+        <div id="emailLastUpload" class="last-uploaded" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h2 class="section-title">How Updates Work</h2>
+      <span class="section-meta">Notes are matched by invoice number</span>
+    </div>
+    <div style="background: rgba(255,255,255,0.4); border: 1px solid var(--line); padding: 18px 22px; border-radius: 2px; margin-bottom: 32px; line-height: 1.6; font-size: 13px;">
+      <p>When you upload a new QBO file, the system:</p>
+      <ol style="padding-left: 22px; margin-top: 8px;">
+        <li><strong>Matches each row by invoice number</strong> (the <span class="mono">Num</span> column).</li>
+        <li><strong>Preserves notes, collection status, and sent-to-collections date</strong> for invoices that already exist.</li>
+        <li><strong>Updates</strong> amount, open balance, dates, and client name from the new file.</li>
+        <li><strong>Adds</strong> any invoices that are new in the upload.</li>
+        <li><strong>Removes</strong> invoices that no longer appear (they've been paid/cleared). Their notes &amp; collection state are archived in case they reappear.</li>
+      </ol>
+    </div>
+
+    <div class="section-header">
+      <h2 class="section-title">Upload History</h2>
+      <span class="section-meta">Audit log of every import</span>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="empty-state" style="padding: 30px 20px">
+        <p>No uploads yet.</p>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line);">
+      <div class="section-header">
+        <h2 class="section-title">Initial Data Import</h2>
+        <span class="section-meta">One-time setup · pushes existing data to Google Sheet</span>
+      </div>
+      <div style="background: rgba(45, 80, 22, 0.06); border: 1px solid var(--bark); padding: 18px 22px; border-radius: 2px; margin-bottom: 18px; font-size: 13px; line-height: 1.6;">
+        <p style="margin-bottom: 12px;"><strong>Hosted dashboards start empty.</strong> Once you've signed in and the sheet is created, upload your QBO file, Sales Rep file, Contact file, and Email Follow-Up file to seed the dashboard.</p>
+        <p style="margin-bottom: 14px; color: var(--ink-soft); font-size: 12px;">If you have a backup JSON file from a previous session, use the "Restore from Backup" button below to load it.</p>
+        <button class="btn" id="loadInitialBtn" style="display:none">Load Initial Data into Sheet</button>
+      </div>
+    </div>
+
+    <div style="margin-top: 32px; padding-top: 22px; border-top: 1px solid var(--line);">
+      <div class="section-header">
+        <h2 class="section-title">Backup &amp; Reset</h2>
+        <span class="section-meta">Use sparingly</span>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn secondary" id="backupJSON">Download Full Backup (JSON)</button>
+        <label for="restoreJSON" class="btn secondary">Restore from Backup</label>
+        <input type="file" id="restoreJSON" accept=".json" />
+        <button class="btn rust" id="clearAll" style="margin-left: auto">Clear All Data</button>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ============ Notes / Collections editor modal ============ -->
+<div class="modal-backdrop" id="invModal">
+  <div class="modal">
+    <h3 id="invModalTitle">Edit Invoice</h3>
+    <div class="modal-sub" id="invModalSub">Invoice details</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="invCollChk" />
+      <label for="invCollChk">Sent to Collections</label>
+    </div>
+
+    <label class="field" id="collDateField" style="display:none">
+      <span class="lbl">Date Sent to Collections</span>
+      <input type="date" id="invCollDate" />
+    </label>
+
+    <label class="field">
+      <span class="lbl">Notes</span>
+      <textarea id="invNotes" placeholder="Add collection notes, contact attempts, status updates…"></textarea>
+    </label>
+
+    <div id="invDemandSection" style="background: rgba(154, 58, 20, 0.06); border: 1px solid rgba(154, 58, 20, 0.2); border-radius: 2px; padding: 14px 16px; margin-bottom: 14px;">
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600;">NYS Demand Letter</div>
+      <div id="invDemandStatus" style="font-size: 13px; margin-bottom: 10px;"></div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="btn small rust" id="invGenerateDemand">Generate &amp; Print Demand Letter</button>
+        <button class="btn small secondary" id="invClearDemand" style="display:none">Clear Demand Letter Status</button>
+      </div>
+      <div id="invDemandNote" style="font-size: 11px; color: var(--ink-soft); margin-top: 8px; font-style: italic;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <span class="left footnote" id="invMeta"></span>
+      <button class="btn secondary" id="invCancel">Cancel</button>
+      <button class="btn" id="invSave">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Setup / sign-in overlay -->
+<div id="signedInOverlay" style="position:fixed; inset:0; z-index:150; background:rgba(245,239,228,0.97); display:flex; align-items:center; justify-content:center; padding:20px;">
+  <div style="max-width:560px; background:var(--paper); border:1px solid var(--ink); border-radius:4px; padding:36px; box-shadow:0 20px 60px var(--shadow-2);">
+    <h2 style="font-family:'Fraunces',serif; font-weight:900; font-size:30px; margin-bottom:8px;">Overdue Ledger</h2>
+    <p style="color:var(--ink-soft); font-size:13px; margin-bottom:24px;">Monster Tree Service of Rochester · Accounts Receivable</p>
+    <div id="setupSection" style="display:none; background:rgba(154,58,20,0.08); border:1px solid var(--rust); padding:16px 20px; margin-bottom:20px; border-radius:2px; font-size:13px;">
+      <strong style="color:var(--rust-deep);">First-time setup needed</strong>
+      <p style="margin:8px 0 12px;">Before the office can use this dashboard, an admin must complete one-time Google setup. Paste your OAuth Client ID here:</p>
+      <input type="text" id="clientIdInput" placeholder="xxxxxxxxxxxx.apps.googleusercontent.com" style="width:100%; padding:10px; border:1px solid var(--line); border-radius:2px; font-family:'JetBrains Mono',monospace; font-size:11px; margin-bottom:10px;">
+      <div style="display:flex; gap:8px;">
+        <button class="btn small" id="saveClientId">Save Client ID</button>
+        <button class="btn small secondary" id="openSetupGuide">Open Setup Guide</button>
+      </div>
+    </div>
+    <p id="overlaySignInPrompt" style="font-size:14px; margin-bottom:18px;">Sign in with your work Google account to access the shared ledger:</p>
+    <button class="btn" id="overlaySignInBtn" style="font-size:14px; padding:14px 28px;">Sign in with Google</button>
+    <p style="font-size:11px; color:var(--ink-soft); margin-top:24px; line-height:1.5;">
+      Your data lives in a Google Sheet that the office shares.<br>
+      First time? <a href="#" id="overlaySetupLink" style="color:var(--bark-deep);">Click here to enter your OAuth Client ID</a>
+    </p>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar"></div>
+
+<script>
+// =====================================================================
+// MONSTER TREE SERVICE — OVERDUE INVOICE DASHBOARD
+// Storage via Google Sheets (shared across the office)
+// =====================================================================
+
+// =====================================================================
+// GOOGLE SHEETS BACKEND CONFIGURATION
+// =====================================================================
+// User must paste their OAuth Client ID below after Google Cloud setup.
+// The SHEET ID is auto-created on first sign-in if blank.
+const GOOGLE_CONFIG = {
+  CLIENT_ID:     localStorage.getItem('mts_client_id') || '',
+  SHEET_ID:      localStorage.getItem('mts_sheet_id') || '',
+  SHEET_NAME:    'Monster Tree — Overdue Ledger',
+  SCOPES:        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+  TABS: {
+    INVOICES:  { name: 'Invoices',  headers: ['num','date','transactionType','name','memo','dueDate','amount','openBalance','salesRep','notes','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent','firstSeen','lastUpdated'] },
+    CONTACTS:  { name: 'Contacts',  headers: ['customer','fullName','phones','emails','billStreet','billCity','billZip','shipStreet','shipCity','shipZip'] },
+    HISTORY:   { name: 'History',   headers: ['when','type','filename','added','updated','removed','notesPreserved','collectionsPreserved','mappedCount','total','totalAfter','invoiceCount'] },
+    ARCHIVED:  { name: 'Archived',  headers: ['num','notes','salesRep','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent'] },
+    META:      { name: 'Meta',      headers: ['key','value'] }
+  }
+};
+const STORAGE_KEYS = GOOGLE_CONFIG.TABS; // legacy alias for references in rendering code
+
+let STATE = {
+  invoices: [],
+  history: [],
+  archived: {},
+  contacts: {},
+  meta: {},
+  currentSort: { key: 'date', dir: 'desc' },
+  currentFilters: { text: '', rep: '', year: '', status: '' },
+  editingNum: null,
+  editingSnapshot: null  // snapshot of invoice when modal opened, for stale-data detection
+};
+
+// =====================================================================
+// GOOGLE SHEETS API CLIENT
+// =====================================================================
+
+let GOOGLE_AUTH = {
+  tokenClient: null,
+  accessToken: null,
+  user: null,
+  initialized: false
+};
+
+// Load gapi client and gsi (Google Sign-In) once
+async function loadGoogleApis() {
+  if (window._mtsGapiLoaded) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://apis.google.com/js/api.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  await new Promise((resolve, reject) => {
+    gapi.load('client', { callback: resolve, onerror: reject });
+  });
+  await gapi.client.init({
+    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+  });
+  window._mtsGapiLoaded = true;
+}
+
+async function ensureSignedIn() {
+  if (!GOOGLE_CONFIG.CLIENT_ID) {
+    showSetupModal();
+    throw new Error('No Client ID configured');
+  }
+  if (GOOGLE_AUTH.accessToken) return;
+  await loadGoogleApis();
+  return new Promise((resolve, reject) => {
+    if (!GOOGLE_AUTH.tokenClient) {
+      GOOGLE_AUTH.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CONFIG.CLIENT_ID,
+        scope: GOOGLE_CONFIG.SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { reject(resp); return; }
+          GOOGLE_AUTH.accessToken = resp.access_token;
+          gapi.client.setToken({ access_token: resp.access_token });
+          // Fetch user info
+          try {
+            const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+              headers: { 'Authorization': 'Bearer ' + resp.access_token }
+            });
+            GOOGLE_AUTH.user = await userResp.json();
+          } catch(e) { /* nothing */ }
+          updateAuthUi();
+          resolve();
+        }
+      });
+    }
+    GOOGLE_AUTH.tokenClient.requestAccessToken({ prompt: '' });
+  });
+}
+
+async function signIn() {
+  if (!GOOGLE_CONFIG.CLIENT_ID) { showSetupModal(); return; }
+  try {
+    await loadGoogleApis();
+    if (!GOOGLE_AUTH.tokenClient) {
+      GOOGLE_AUTH.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CONFIG.CLIENT_ID,
+        scope: GOOGLE_CONFIG.SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { showStatus('Sign-in failed: ' + resp.error, 'error'); return; }
+          GOOGLE_AUTH.accessToken = resp.access_token;
+          gapi.client.setToken({ access_token: resp.access_token });
+          try {
+            const userResp = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+              headers: { 'Authorization': 'Bearer ' + resp.access_token }
+            });
+            GOOGLE_AUTH.user = await userResp.json();
+          } catch(e) {}
+          updateAuthUi();
+          // After sign-in, try to load data
+          await ensureSheetExists();
+          await loadState();
+        }
+      });
+    }
+    GOOGLE_AUTH.tokenClient.requestAccessToken({ prompt: 'consent' });
+  } catch(e) {
+    console.error(e);
+    showStatus('Sign-in error: ' + e.message, 'error');
+  }
+}
+
+function signOut() {
+  if (GOOGLE_AUTH.accessToken) {
+    google.accounts.oauth2.revoke(GOOGLE_AUTH.accessToken, () => {});
+  }
+  GOOGLE_AUTH.accessToken = null;
+  GOOGLE_AUTH.user = null;
+  gapi.client.setToken(null);
+  updateAuthUi();
+  // Clear in-memory state
+  STATE.invoices = []; STATE.history = []; STATE.archived = {}; STATE.contacts = {}; STATE.meta = {};
+  renderAll();
+}
+
+function updateAuthUi() {
+  const signedIn = !!GOOGLE_AUTH.accessToken;
+  document.getElementById('signInBtn').style.display = signedIn ? 'none' : 'inline-block';
+  document.getElementById('signOutBtn').style.display = signedIn ? 'inline-block' : 'none';
+  document.getElementById('userInfo').textContent = signedIn && GOOGLE_AUTH.user ? GOOGLE_AUTH.user.email : '';
+  document.getElementById('signedInOverlay').style.display = signedIn ? 'none' : 'flex';
+}
+
+// =====================================================================
+// SHEET MANAGEMENT — create the sheet automatically on first run
+// =====================================================================
+
+async function ensureSheetExists() {
+  if (GOOGLE_CONFIG.SHEET_ID) {
+    try {
+      // Try to fetch the sheet to verify access and existence
+      const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: GOOGLE_CONFIG.SHEET_ID });
+      // Make sure all the tabs exist
+      const existingTabs = new Set(resp.result.sheets.map(s => s.properties.title));
+      const needed = Object.values(GOOGLE_CONFIG.TABS).map(t => t.name);
+      const missing = needed.filter(n => !existingTabs.has(n));
+      if (missing.length > 0) await addMissingTabs(missing);
+      return GOOGLE_CONFIG.SHEET_ID;
+    } catch(e) {
+      console.warn('Saved sheet not accessible, will offer to create new', e);
+    }
+  }
+  // Need to create a new sheet
+  return await createNewSheet();
+}
+
+async function createNewSheet() {
+  showStatus('Creating new shared Google Sheet…', 'info', true);
+  const resp = await gapi.client.sheets.spreadsheets.create({
+    resource: {
+      properties: { title: GOOGLE_CONFIG.SHEET_NAME },
+      sheets: Object.values(GOOGLE_CONFIG.TABS).map(t => ({
+        properties: { title: t.name }
+      }))
+    }
+  });
+  const sheetId = resp.result.spreadsheetId;
+  GOOGLE_CONFIG.SHEET_ID = sheetId;
+  localStorage.setItem('mts_sheet_id', sheetId);
+
+  // Write headers to each tab
+  const data = Object.values(GOOGLE_CONFIG.TABS).map(t => ({
+    range: `${t.name}!A1:${columnLetter(t.headers.length)}1`,
+    values: [t.headers]
+  }));
+  await gapi.client.sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: sheetId,
+    resource: { valueInputOption: 'RAW', data }
+  });
+
+  // Format header rows: bold, frozen
+  const formatRequests = resp.result.sheets.map(s => ({
+    repeatCell: {
+      range: { sheetId: s.properties.sheetId, startRowIndex: 0, endRowIndex: 1 },
+      cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.1, green: 0.1, blue: 0.1 }, horizontalAlignment: 'LEFT' } },
+      fields: 'userEnteredFormat(textFormat,backgroundColor,horizontalAlignment)'
+    }
+  })).concat(resp.result.sheets.map(s => ({
+    updateSheetProperties: {
+      properties: { sheetId: s.properties.sheetId, gridProperties: { frozenRowCount: 1 } },
+      fields: 'gridProperties.frozenRowCount'
+    }
+  })));
+  // Make header text white
+  formatRequests.push(...resp.result.sheets.map(s => ({
+    repeatCell: {
+      range: { sheetId: s.properties.sheetId, startRowIndex: 0, endRowIndex: 1 },
+      cell: { userEnteredFormat: { textFormat: { foregroundColor: { red: 0.96, green: 0.94, blue: 0.89 }, bold: true } } },
+      fields: 'userEnteredFormat.textFormat(foregroundColor,bold)'
+    }
+  })));
+  await gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId: sheetId,
+    resource: { requests: formatRequests }
+  });
+
+  showStatus('New Google Sheet created. Share it with your office (Editor access).', 'success');
+  return sheetId;
+}
+
+async function addMissingTabs(tabNames) {
+  const requests = tabNames.map(name => ({
+    addSheet: { properties: { title: name } }
+  }));
+  await gapi.client.sheets.spreadsheets.batchUpdate({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    resource: { requests }
+  });
+  // Now write headers for each newly added tab
+  const data = tabNames.map(name => {
+    const tab = Object.values(GOOGLE_CONFIG.TABS).find(t => t.name === name);
+    return { range: `${name}!A1:${columnLetter(tab.headers.length)}1`, values: [tab.headers] };
+  });
+  await gapi.client.sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    resource: { valueInputOption: 'RAW', data }
+  });
+}
+
+function columnLetter(n) {
+  // 1 -> A, 26 -> Z, 27 -> AA
+  let s = '';
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+// =====================================================================
+// READ / WRITE SHEET DATA
+// =====================================================================
+
+async function readTab(tabConfig) {
+  const range = `${tabConfig.name}!A2:${columnLetter(tabConfig.headers.length)}`;
+  const resp = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range,
+    valueRenderOption: 'UNFORMATTED_VALUE'
+  });
+  const rows = resp.result.values || [];
+  return rows.map(row => {
+    const obj = {};
+    tabConfig.headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+    return obj;
+  });
+}
+
+// Read a single invoice row from the sheet by invoice number — used for stale-data checks
+async function readSingleInvoiceFromSheet(invoiceNum) {
+  if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return null;
+  const tab = GOOGLE_CONFIG.TABS.INVOICES;
+  // Read num column + all data
+  const range = `${tab.name}!A2:${columnLetter(tab.headers.length)}`;
+  const resp = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range,
+    valueRenderOption: 'UNFORMATTED_VALUE'
+  });
+  const rows = resp.result.values || [];
+  const target = String(invoiceNum);
+  for (const row of rows) {
+    if (String(row[0]) === target) {
+      const obj = {};
+      tab.headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+      // Coerce types
+      obj.amount = parseNumberLoose(obj.amount);
+      obj.openBalance = parseNumberLoose(obj.openBalance);
+      obj.inCollections = obj.inCollections === true || obj.inCollections === 'TRUE' || obj.inCollections === 'true';
+      obj.demandLetterSent = obj.demandLetterSent === true || obj.demandLetterSent === 'TRUE' || obj.demandLetterSent === 'true';
+      return obj;
+    }
+  }
+  return null;
+}
+
+// Compare two invoices on editable fields and return human-readable list of differences
+function diffEditableFields(a, b) {
+  const fields = [
+    { key: 'notes',            label: 'Notes' },
+    { key: 'salesRep',         label: 'Sales Rep' },
+    { key: 'inCollections',    label: 'In Collections',     bool: true },
+    { key: 'collectionsDate',  label: 'Collections Date' },
+    { key: 'demandLetterSent', label: 'Demand Letter Sent', bool: true },
+    { key: 'demandLetterDate', label: 'Demand Letter Date' }
+  ];
+  const diffs = [];
+  for (const f of fields) {
+    const va = f.bool ? !!a[f.key] : (a[f.key] || '');
+    const vb = f.bool ? !!b[f.key] : (b[f.key] || '');
+    if (String(va) !== String(vb)) {
+      diffs.push({ field: f.label, mine: va, sheet: vb });
+    }
+  }
+  return diffs;
+}
+
+async function writeTabFull(tabConfig, rows) {
+  const range = `${tabConfig.name}!A2:${columnLetter(tabConfig.headers.length)}`;
+  // First, clear existing data below row 1
+  await gapi.client.sheets.spreadsheets.values.clear({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range
+  });
+  if (rows.length === 0) return;
+  const values = rows.map(row => tabConfig.headers.map(h => {
+    const v = row[h];
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    return v;
+  }));
+  await gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range: `${tabConfig.name}!A2`,
+    valueInputOption: 'RAW',
+    resource: { values }
+  });
+}
+
+// =====================================================================
+// LOAD / SAVE STATE
+// =====================================================================
+
+async function loadState() {
+  if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return;
+  showStatus('Loading from Google Sheet…', 'info', true);
+  try {
+    const [invRows, contactRows, histRows, archRows, metaRows] = await Promise.all([
+      readTab(GOOGLE_CONFIG.TABS.INVOICES),
+      readTab(GOOGLE_CONFIG.TABS.CONTACTS),
+      readTab(GOOGLE_CONFIG.TABS.HISTORY),
+      readTab(GOOGLE_CONFIG.TABS.ARCHIVED),
+      readTab(GOOGLE_CONFIG.TABS.META)
+    ]);
+    // Coerce types
+    STATE.invoices = invRows.map(r => ({
+      ...r,
+      amount: parseNumberLoose(r.amount),
+      openBalance: parseNumberLoose(r.openBalance),
+      inCollections: r.inCollections === true || r.inCollections === 'TRUE' || r.inCollections === 'true',
+      demandLetterSent: r.demandLetterSent === true || r.demandLetterSent === 'TRUE' || r.demandLetterSent === 'true',
+      reminderCount: parseNumberLoose(r.reminderCount),
+      overdueReminderCount: parseNumberLoose(r.overdueReminderCount),
+      reminderLastSent: r.reminderLastSent || '',
+      overdueReminderLastSent: r.overdueReminderLastSent || '',
+      num: String(r.num)
+    })).filter(r => r.num);
+    STATE.contacts = {};
+    contactRows.forEach(r => {
+      if (r.customer) {
+        STATE.contacts[r.customer] = {
+          fullName: r.fullName || r.customer,
+          phones: r.phones || '',
+          emails: r.emails || '',
+          billStreet: r.billStreet || '',
+          billCity: r.billCity || '',
+          billZip: String(r.billZip || ''),
+          shipStreet: r.shipStreet || '',
+          shipCity: r.shipCity || '',
+          shipZip: String(r.shipZip || '')
+        };
+      }
+    });
+    STATE.history = histRows.map(r => ({
+      ...r,
+      added: parseNumberLoose(r.added),
+      updated: parseNumberLoose(r.updated),
+      removed: parseNumberLoose(r.removed),
+      notesPreserved: parseNumberLoose(r.notesPreserved),
+      collectionsPreserved: parseNumberLoose(r.collectionsPreserved),
+      mappedCount: parseNumberLoose(r.mappedCount),
+      total: parseNumberLoose(r.total),
+      totalAfter: parseNumberLoose(r.totalAfter),
+      invoiceCount: parseNumberLoose(r.invoiceCount)
+    }));
+    STATE.archived = {};
+    archRows.forEach(r => {
+      if (r.num) {
+        STATE.archived[r.num] = {
+          notes: r.notes || '',
+          salesRep: r.salesRep || '',
+          inCollections: r.inCollections === true || r.inCollections === 'TRUE' || r.inCollections === 'true',
+          collectionsDate: r.collectionsDate || '',
+          demandLetterSent: r.demandLetterSent === true || r.demandLetterSent === 'TRUE' || r.demandLetterSent === 'true',
+          demandLetterDate: r.demandLetterDate || '',
+          reminderCount: parseNumberLoose(r.reminderCount),
+          reminderLastSent: r.reminderLastSent || '',
+          overdueReminderCount: parseNumberLoose(r.overdueReminderCount),
+          overdueReminderLastSent: r.overdueReminderLastSent || ''
+        };
+      }
+    });
+    STATE.meta = {};
+    metaRows.forEach(r => { if (r.key) STATE.meta[r.key] = r.value; });
+
+    showStatus(`Loaded · ${STATE.invoices.length} invoices · ${Object.keys(STATE.contacts).length} contacts`, 'success');
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    showStatus('Load failed: ' + (e.result?.error?.message || e.message), 'error');
+  }
+}
+
+async function saveState() {
+  if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) {
+    showStatus('Not signed in — cannot save', 'error');
+    return;
+  }
+  showStatus('Saving to Google Sheet…', 'info', true);
+  try {
+    const contactRows = Object.entries(STATE.contacts).map(([customer, info]) => ({ customer, ...info }));
+    const archRows = Object.entries(STATE.archived).map(([num, info]) => ({ num, ...info }));
+    const metaRows = Object.entries(STATE.meta).map(([key, value]) => ({ key, value }));
+    await Promise.all([
+      writeTabFull(GOOGLE_CONFIG.TABS.INVOICES, STATE.invoices),
+      writeTabFull(GOOGLE_CONFIG.TABS.CONTACTS, contactRows),
+      writeTabFull(GOOGLE_CONFIG.TABS.HISTORY, STATE.history),
+      writeTabFull(GOOGLE_CONFIG.TABS.ARCHIVED, archRows),
+      writeTabFull(GOOGLE_CONFIG.TABS.META, metaRows)
+    ]);
+    showStatus('Saved to Google Sheet', 'success');
+  } catch (e) {
+    console.error(e);
+    showStatus('Save failed: ' + (e.result?.error?.message || e.message), 'error');
+  }
+}
+
+// Single-invoice save (for notes / collections edits) with stale-data detection.
+// If `snapshot` is provided, compares it against the current row in the sheet before writing.
+// If the sheet's values differ from the snapshot, the user is prompted to overwrite or cancel.
+// Returns true if saved, false if the user cancelled.
+async function saveSingleInvoice(num, snapshot) {
+  if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return false;
+  const tab = GOOGLE_CONFIG.TABS.INVOICES;
+  // Read the full invoice row from the sheet (so we can find its row number AND check for staleness)
+  const range = `${tab.name}!A2:${columnLetter(tab.headers.length)}`;
+  const resp = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range,
+    valueRenderOption: 'UNFORMATTED_VALUE'
+  });
+  const rows = resp.result.values || [];
+  const idx = rows.findIndex(r => String(r[0]) === String(num));
+  if (idx === -1) {
+    // Not in sheet — fall back to a full save
+    return await saveState();
+  }
+  const inv = STATE.invoices.find(r => r.num === num);
+  if (!inv) return false;
+
+  // Stale-data check: compare snapshot vs sheet's current value
+  if (snapshot) {
+    const sheetRow = rows[idx];
+    const sheetInv = {};
+    tab.headers.forEach((h, i) => { sheetInv[h] = sheetRow[i] !== undefined ? sheetRow[i] : ''; });
+    sheetInv.inCollections    = sheetInv.inCollections    === true || sheetInv.inCollections    === 'TRUE' || sheetInv.inCollections    === 'true';
+    sheetInv.demandLetterSent = sheetInv.demandLetterSent === true || sheetInv.demandLetterSent === 'TRUE' || sheetInv.demandLetterSent === 'true';
+    const diffs = diffEditableFields(snapshot, sheetInv);
+    if (diffs.length > 0) {
+      // Someone else changed this invoice while the editor was open
+      const lines = diffs.map(d => {
+        const mine = d.mine === '' ? '(blank)' : (d.mine === true ? 'Yes' : (d.mine === false ? 'No' : d.mine));
+        const sheet = d.sheet === '' ? '(blank)' : (d.sheet === true ? 'Yes' : (d.sheet === false ? 'No' : d.sheet));
+        const mineStr = String(mine).length > 80 ? String(mine).slice(0, 80) + '…' : String(mine);
+        const sheetStr = String(sheet).length > 80 ? String(sheet).slice(0, 80) + '…' : String(sheet);
+        return `  • ${d.field}\n      When you opened: ${mineStr}\n      Now in sheet:    ${sheetStr}`;
+      }).join('\n\n');
+      const msg = `STALE DATA WARNING\n\nSomeone else has changed invoice ${num} since you opened it:\n\n${lines}\n\n[OK] = Overwrite their changes with yours\n[Cancel] = Keep their changes, discard yours`;
+      if (!confirm(msg)) {
+        // Pull the sheet's version into local state so the user sees what's current
+        Object.assign(inv, sheetInv);
+        inv.amount = parseNumberLoose(inv.amount);
+        inv.openBalance = parseNumberLoose(inv.openBalance);
+        renderAll();
+        return false;
+      }
+    }
+  }
+
+  // Write the row
+  const rowNum = idx + 2;
+  const values = [tab.headers.map(h => {
+    const v = inv[h];
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';
+    return v;
+  })];
+  await gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+    range: `${tab.name}!A${rowNum}:${columnLetter(tab.headers.length)}${rowNum}`,
+    valueInputOption: 'RAW',
+    resource: { values }
+  });
+  return true;
+}
+
+async function refreshFromSheet() {
+  if (!GOOGLE_AUTH.accessToken) { showStatus('Sign in first', 'error'); return; }
+  await loadState();
+}
+
+// =====================================================================
+// FORMATTERS / PARSERS
+// =====================================================================
+
+function fmtMoney(n) {
+  if (n === null || n === undefined || isNaN(n)) return '$0.00';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtMoneyTight(n) {
+  if (n === null || n === undefined || isNaN(n)) return '–';
+  if (n === 0) return '–';
+  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = parseAnyDate(d);
+  if (!dt) return String(d);
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const day = String(dt.getDate()).padStart(2, '0');
+  return `${m}/${day}/${dt.getFullYear()}`;
+}
+function fmtDateTime(iso) {
+  if (!iso) return '';
+  const dt = new Date(iso);
+  return dt.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function parseAnyDate(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v === 'number') {
+    // Excel serial
+    const epoch = new Date(Date.UTC(1899, 11, 30));
+    const ms = v * 86400000;
+    const d = new Date(epoch.getTime() + ms);
+    return isNaN(d) ? null : d;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    let y = parseInt(m[3], 10);
+    if (y < 100) y += 2000;
+    return new Date(y, parseInt(m[1],10) - 1, parseInt(m[2],10));
+  }
+  m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function parseNumberLoose(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  if (typeof v === 'number') return v;
+  // Strip commas, $, whitespace, handle parentheses as negative
+  let s = String(v).trim();
+  const neg = /^\(.*\)$/.test(s);
+  s = s.replace(/[\$,\s]/g, '').replace(/^\(/, '').replace(/\)$/, '');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : (neg ? -n : n);
+}
+
+function normalizeInvoiceNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  return String(v).trim();
+}
+
+function nowISO() { return new Date().toISOString(); }
+
+// =====================================================================
+// STATUS BAR
+// =====================================================================
+
+let statusTimer;
+function showStatus(text, type = 'info', sticky = false) {
+  const el = document.getElementById('statusBar');
+  el.className = 'status-bar show ' + (type === 'error' ? 'error' : type === 'success' ? 'success' : '');
+  el.innerHTML = (sticky ? '<span class="spinner"></span>' : '') + text;
+  clearTimeout(statusTimer);
+  if (!sticky) {
+    statusTimer = setTimeout(() => el.classList.remove('show'), 4500);
+  }
+}
+function hideStatus() {
+  document.getElementById('statusBar').classList.remove('show');
+}
+
+// =====================================================================
+// FILE PARSING — strict matching
+// =====================================================================
+
+async function readFileAsWorkbook(file) {
+  const data = await file.arrayBuffer();
+  return XLSX.read(data, { type: 'array', cellDates: true });
+}
+
+// Strict header check: row must contain (exact, lowercased) "date" AND "open balance" AND "num"
+function findQBOHeaderRow(rows) {
+  for (let i = 0; i < Math.min(rows.length, 40); i++) {
+    const row = rows[i] || [];
+    const lowered = row.map(c => String(c == null ? '' : c).toLowerCase().trim());
+    if (lowered.includes('date') && lowered.includes('open balance') && lowered.includes('num')) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function parseQBOWorkbook(wb) {
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    // raw=true so numbers stay numbers
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+    const headerRowIdx = findQBOHeaderRow(rows);
+    if (headerRowIdx === -1) continue;
+
+    const header = rows[headerRowIdx].map(c => String(c == null ? '' : c).trim());
+    const lowered = header.map(h => h.toLowerCase());
+
+    // Only require columns A-H as the user said going forward
+    const colIdx = {
+      date:            lowered.indexOf('date'),
+      transactionType: lowered.indexOf('transaction type'),
+      num:             lowered.indexOf('num'),
+      name:            lowered.indexOf('name'),
+      memo:            lowered.findIndex(h => h.startsWith('memo')),
+      dueDate:         lowered.indexOf('due date'),
+      amount:          lowered.indexOf('amount'),
+      openBalance:     lowered.indexOf('open balance')
+    };
+
+    if (colIdx.date === -1 || colIdx.num === -1 || colIdx.name === -1 ||
+        colIdx.amount === -1 || colIdx.openBalance === -1) continue;
+
+    const records = [];
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const num = normalizeInvoiceNum(row[colIdx.num]);
+      if (!num || !row[colIdx.name]) continue;
+      const txType = String(row[colIdx.transactionType] || '').toLowerCase();
+      if (txType.includes('total')) continue;
+
+      const dt = parseAnyDate(row[colIdx.date]);
+      const dueDt = parseAnyDate(row[colIdx.dueDate]);
+      records.push({
+        num,
+        date:            dt ? dt.toISOString().slice(0,10) : '',
+        transactionType: String(row[colIdx.transactionType] || 'Invoice').trim() || 'Invoice',
+        name:            String(row[colIdx.name] || '').trim(),
+        memo:            String(row[colIdx.memo] || '').trim(),
+        dueDate:         dueDt ? dueDt.toISOString().slice(0,10) : '',
+        amount:          parseNumberLoose(row[colIdx.amount]),
+        openBalance:     parseNumberLoose(row[colIdx.openBalance])
+      });
+    }
+    if (records.length > 0) return records;
+  }
+  return [];
+}
+
+// Strict match: the header row must have a cell that is EXACTLY "ref #" or "ref#" or "num" or "invoice" or "invoice #"
+// AND another that is EXACTLY "sales rep" or "sales rep(s)" or "rep" etc.
+function findSalesRepHeaderRow(rows) {
+  const refSet = new Set(['ref #', 'ref#', 'ref', 'num', 'invoice', 'invoice #', 'invoice#', 'invoice number', 'invoice num']);
+  const repSet = new Set(['sales rep', 'sales rep(s)', 'sales reps', 'rep', 'rep(s)']);
+  for (let i = 0; i < Math.min(rows.length, 30); i++) {
+    const row = rows[i] || [];
+    const lowered = row.map(c => String(c == null ? '' : c).toLowerCase().trim());
+    const hasRef = lowered.some(c => refSet.has(c));
+    const hasRep = lowered.some(c => repSet.has(c));
+    if (hasRef && hasRep) return i;
+  }
+  return -1;
+}
+
+function parseSalesRepWorkbook(wb) {
+  const refSet = new Set(['ref #', 'ref#', 'ref', 'num', 'invoice', 'invoice #', 'invoice#', 'invoice number', 'invoice num']);
+  const repSet = new Set(['sales rep', 'sales rep(s)', 'sales reps', 'rep', 'rep(s)']);
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+    const idx = findSalesRepHeaderRow(rows);
+    if (idx === -1) continue;
+    const header = rows[idx].map(c => String(c == null ? '' : c).toLowerCase().trim());
+    const refCol = header.findIndex(h => refSet.has(h));
+    const repCol = header.findIndex(h => repSet.has(h));
+    if (refCol === -1 || repCol === -1) continue;
+
+    const map = {};
+    for (let i = idx + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const num = normalizeInvoiceNum(row[refCol]);
+      const rep = String(row[repCol] || '').trim();
+      if (num && rep) map[num] = rep;
+    }
+    if (Object.keys(map).length > 0) return map;
+  }
+  return {};
+}
+
+// Parse a customer contact list. Expected headers: Customer, Phone Numbers (or Phone), Email,
+// Full Name, Billing Street (or Address), Billing City, Billing ZIP (or Zip). Tolerant to variants.
+function parseContactWorkbook(wb) {
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+    // Find header row: must include "customer" exactly
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 30); i++) {
+      const row = rows[i] || [];
+      const lowered = row.map(c => String(c == null ? '' : c).toLowerCase().trim());
+      if (lowered.includes('customer') && lowered.some(c => c.includes('billing') || c.includes('address') || c.includes('shipping') || c === 'zip' || c === 'street')) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx === -1) continue;
+
+    const header = rows[headerRowIdx].map(c => String(c == null ? '' : c).toLowerCase().trim());
+    const findCol = (...names) => {
+      for (const n of names) {
+        const idx = header.indexOf(n);
+        if (idx !== -1) return idx;
+      }
+      // Fuzzy: contains all words
+      for (let i = 0; i < header.length; i++) {
+        for (const n of names) {
+          const words = n.split(/\s+/);
+          if (words.every(w => header[i].includes(w))) return i;
+        }
+      }
+      return -1;
+    };
+    const cols = {
+      customer:   findCol('customer'),
+      phones:     findCol('phone numbers', 'phones', 'phone'),
+      emails:     findCol('email', 'emails'),
+      fullName:   findCol('full name', 'name'),
+      shipCity:   findCol('shipping city', 'ship city'),
+      shipZip:    findCol('shipping zip', 'ship zip'),
+      shipStreet: findCol('shipping street', 'ship street'),
+      billCity:   findCol('billing city', 'bill city'),
+      billStreet: findCol('billing street', 'bill street', 'billing address'),
+      billZip:    findCol('billing zip', 'bill zip', 'billing zip code')
+    };
+
+    if (cols.customer === -1) continue;
+
+    const cleanCell = (v) => {
+      if (v === null || v === undefined) return '';
+      return String(v).replace(/_x000D_/g, '').replace(/\r/g, '').trim();
+    };
+    // Billing/shipping street may contain the customer name prepended on a separate line
+    const cleanStreet = (v) => {
+      const s = cleanCell(v);
+      if (!s) return '';
+      const lines = s.split(/\n+/).map(x => x.trim()).filter(Boolean);
+      return lines.length ? lines[lines.length - 1] : s;
+    };
+
+    const contacts = {};
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const customer = cleanCell(row[cols.customer]);
+      if (!customer) continue;
+      contacts[customer] = {
+        fullName:   cols.fullName   !== -1 ? cleanCell(row[cols.fullName]) || customer : customer,
+        phones:     cols.phones     !== -1 ? cleanCell(row[cols.phones])     : '',
+        emails:     cols.emails     !== -1 ? cleanCell(row[cols.emails])     : '',
+        billStreet: cols.billStreet !== -1 ? cleanStreet(row[cols.billStreet]) : '',
+        billCity:   cols.billCity   !== -1 ? cleanCell(row[cols.billCity])   : '',
+        billZip:    cols.billZip    !== -1 ? cleanCell(row[cols.billZip])    : '',
+        shipStreet: cols.shipStreet !== -1 ? cleanStreet(row[cols.shipStreet]) : '',
+        shipCity:   cols.shipCity   !== -1 ? cleanCell(row[cols.shipCity])   : '',
+        shipZip:    cols.shipZip    !== -1 ? cleanCell(row[cols.shipZip])    : ''
+      };
+    }
+    if (Object.keys(contacts).length > 0) return contacts;
+  }
+  return {};
+}
+
+// Parse the Email Follow-Up CSV/XLSX. Expected columns: Ref #, Template, Sent At
+// Returns: { invoiceNum: { reminderCount, reminderLastSent, overdueReminderCount, overdueReminderLastSent } }
+function parseEmailFollowupWorkbook(wb) {
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+    // Find header row
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(rows.length, 30); i++) {
+      const row = rows[i] || [];
+      const lowered = row.map(c => String(c == null ? '' : c).toLowerCase().trim());
+      if (lowered.some(c => c === 'ref #' || c === 'ref#' || c === 'ref') &&
+          lowered.includes('template') &&
+          lowered.some(c => c.includes('sent') && c.includes('at'))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx === -1) continue;
+
+    const header = rows[headerRowIdx].map(c => String(c == null ? '' : c).toLowerCase().trim());
+    const refCol      = header.findIndex(h => h === 'ref #' || h === 'ref#' || h === 'ref');
+    const templateCol = header.indexOf('template');
+    const sentAtCol   = header.findIndex(h => h.includes('sent') && h.includes('at'));
+    if (refCol === -1 || templateCol === -1 || sentAtCol === -1) continue;
+
+    // Aggregate by invoice number
+    const stats = {};
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const num = normalizeInvoiceNum(row[refCol]);
+      const template = String(row[templateCol] || '').trim();
+      if (!num || !template) continue;
+      // Match the specific templates that count as reminders
+      const isReminder = template === 'Invoice Due Reminder';
+      const isOverdueReminder = template === 'Invoice Overdue Reminder';
+      if (!isReminder && !isOverdueReminder) continue;
+
+      const dt = parseAnyDate(row[sentAtCol]);
+      const dtISO = dt ? dt.toISOString().slice(0,10) : '';
+
+      if (!stats[num]) stats[num] = { reminderCount: 0, reminderLastSent: '', overdueReminderCount: 0, overdueReminderLastSent: '' };
+      if (isReminder) {
+        stats[num].reminderCount++;
+        if (dtISO && (!stats[num].reminderLastSent || dtISO > stats[num].reminderLastSent)) {
+          stats[num].reminderLastSent = dtISO;
+        }
+      } else {
+        stats[num].overdueReminderCount++;
+        if (dtISO && (!stats[num].overdueReminderLastSent || dtISO > stats[num].overdueReminderLastSent)) {
+          stats[num].overdueReminderLastSent = dtISO;
+        }
+      }
+    }
+    if (Object.keys(stats).length > 0) return stats;
+  }
+  return {};
+}
+
+// Merge email reminder stats into existing invoices. The file is the source of truth:
+// invoices not in the file have their counts reset to 0.
+function mergeEmailFollowupData(stats, filename) {
+  let matched = 0, withReminders = 0, withOverdueReminders = 0;
+  STATE.invoices.forEach(inv => {
+    const s = stats[inv.num];
+    if (s) {
+      inv.reminderCount = s.reminderCount;
+      inv.reminderLastSent = s.reminderLastSent;
+      inv.overdueReminderCount = s.overdueReminderCount;
+      inv.overdueReminderLastSent = s.overdueReminderLastSent;
+      matched++;
+      if (s.reminderCount > 0) withReminders++;
+      if (s.overdueReminderCount > 0) withOverdueReminders++;
+    } else {
+      // Reset to zero for invoices not in the email file
+      inv.reminderCount = 0;
+      inv.reminderLastSent = '';
+      inv.overdueReminderCount = 0;
+      inv.overdueReminderLastSent = '';
+    }
+    inv.lastUpdated = nowISO();
+  });
+  STATE.meta.lastEmailUpload = nowISO();
+  STATE.meta.lastEmailFile = filename;
+  STATE.history.unshift({
+    when: nowISO(), type: 'email', filename,
+    matched, withReminders, withOverdueReminders, total: Object.keys(stats).length
+  });
+  STATE.history = STATE.history.slice(0, 100);
+  return { matched, withReminders, withOverdueReminders, totalInFile: Object.keys(stats).length };
+}
+
+// =====================================================================
+// MERGE LOGIC
+// =====================================================================
+
+function mergeQBOData(newRecords, filename) {
+  const existingByNum = new Map();
+  STATE.invoices.forEach(inv => existingByNum.set(inv.num, inv));
+
+  const newNums = new Set(newRecords.map(r => r.num));
+  const now = nowISO();
+
+  let added = 0, updated = 0, notesPreserved = 0, collectionsPreserved = 0;
+  const result = [];
+
+  newRecords.forEach(rec => {
+    const existing = existingByNum.get(rec.num);
+    if (existing) {
+      const newInv = {
+        ...rec,
+        notes:                    existing.notes || '',
+        salesRep:                 existing.salesRep || '',
+        inCollections:            !!existing.inCollections,
+        collectionsDate:          existing.collectionsDate || '',
+        demandLetterSent:         !!existing.demandLetterSent,
+        demandLetterDate:         existing.demandLetterDate || '',
+        reminderCount:            existing.reminderCount || 0,
+        reminderLastSent:         existing.reminderLastSent || '',
+        overdueReminderCount:     existing.overdueReminderCount || 0,
+        overdueReminderLastSent:  existing.overdueReminderLastSent || '',
+        firstSeen:                existing.firstSeen,
+        lastUpdated:              now
+      };
+      const changed = (
+        existing.openBalance !== newInv.openBalance ||
+        existing.amount !== newInv.amount ||
+        existing.name !== newInv.name ||
+        existing.date !== newInv.date ||
+        existing.dueDate !== newInv.dueDate
+      );
+      if (changed) updated++;
+      if (existing.notes) notesPreserved++;
+      if (existing.inCollections) collectionsPreserved++;
+      result.push(newInv);
+    } else {
+      // Check archived in case this invoice was here before
+      const arch = STATE.archived[rec.num];
+      const newInv = {
+        ...rec,
+        notes:                    arch?.notes || '',
+        salesRep:                 arch?.salesRep || '',
+        inCollections:            !!arch?.inCollections,
+        collectionsDate:          arch?.collectionsDate || '',
+        demandLetterSent:         !!arch?.demandLetterSent,
+        demandLetterDate:         arch?.demandLetterDate || '',
+        reminderCount:            arch?.reminderCount || 0,
+        reminderLastSent:         arch?.reminderLastSent || '',
+        overdueReminderCount:     arch?.overdueReminderCount || 0,
+        overdueReminderLastSent:  arch?.overdueReminderLastSent || '',
+        firstSeen:                now,
+        lastUpdated:              now
+      };
+      if (arch) {
+        if (arch.notes) notesPreserved++;
+        if (arch.inCollections) collectionsPreserved++;
+        delete STATE.archived[rec.num];
+      }
+      result.push(newInv);
+      added++;
+    }
+  });
+
+  let removed = 0;
+  STATE.invoices.forEach(inv => {
+    if (!newNums.has(inv.num)) {
+      // Archive anything worth keeping
+      if (inv.notes || inv.inCollections || inv.salesRep || inv.demandLetterSent || inv.reminderCount || inv.overdueReminderCount) {
+        STATE.archived[inv.num] = {
+          notes:                   inv.notes || '',
+          salesRep:                inv.salesRep || '',
+          inCollections:           !!inv.inCollections,
+          collectionsDate:         inv.collectionsDate || '',
+          demandLetterSent:        !!inv.demandLetterSent,
+          demandLetterDate:        inv.demandLetterDate || '',
+          reminderCount:           inv.reminderCount || 0,
+          reminderLastSent:        inv.reminderLastSent || '',
+          overdueReminderCount:    inv.overdueReminderCount || 0,
+          overdueReminderLastSent: inv.overdueReminderLastSent || ''
+        };
+      }
+      removed++;
+    }
+  });
+
+  STATE.invoices = result;
+  STATE.meta.lastQboUpload = now;
+  STATE.meta.lastQboFile = filename;
+
+  const totalAfter = result.reduce((s, r) => s + (r.openBalance || 0), 0);
+  STATE.history.unshift({
+    when: now, type: 'qbo', filename,
+    added, updated, removed, notesPreserved, collectionsPreserved, totalAfter,
+    invoiceCount: result.length
+  });
+  STATE.history = STATE.history.slice(0, 100);
+
+  return { added, updated, removed, notesPreserved, collectionsPreserved };
+}
+
+function mergeSalesRepData(repMap, filename) {
+  let updatedCount = 0;
+  STATE.invoices.forEach(inv => {
+    const rep = repMap[inv.num];
+    if (rep && inv.salesRep !== rep) {
+      inv.salesRep = rep;
+      inv.lastUpdated = nowISO();
+      updatedCount++;
+    }
+  });
+  STATE.meta.lastRepUpload = nowISO();
+  STATE.meta.lastRepFile = filename;
+  STATE.history.unshift({
+    when: nowISO(), type: 'salesRep', filename,
+    updated: updatedCount, mappedCount: Object.keys(repMap).length
+  });
+  STATE.history = STATE.history.slice(0, 100);
+  return { updated: updatedCount, mapped: Object.keys(repMap).length };
+}
+
+// =====================================================================
+// UPLOAD HANDLERS
+// =====================================================================
+
+async function handleQBOFile(file) {
+  showStatus('Reading QBO file…', 'info', true);
+  try {
+    const wb = await readFileAsWorkbook(file);
+    const records = parseQBOWorkbook(wb);
+    if (records.length === 0) {
+      showStatus('No invoice data found. Expected a QBO Customer Balance Detail export with columns Date, Transaction Type, Num, Name, Memo/Description, Due Date, Amount, Open Balance.', 'error');
+      return;
+    }
+    const result = mergeQBOData(records, file.name);
+    await saveState();
+    const parts = [];
+    if (result.added) parts.push(`${result.added} added`);
+    if (result.updated) parts.push(`${result.updated} updated`);
+    if (result.removed) parts.push(`${result.removed} removed`);
+    if (result.notesPreserved) parts.push(`${result.notesPreserved} notes preserved`);
+    if (result.collectionsPreserved) parts.push(`${result.collectionsPreserved} collections preserved`);
+    showStatus('QBO import done · ' + (parts.join(' · ') || 'no changes'), 'success');
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    showStatus('Failed to read file: ' + e.message, 'error');
+  }
+}
+
+async function handleRepFile(file) {
+  showStatus('Reading Sales Rep file…', 'info', true);
+  try {
+    const wb = await readFileAsWorkbook(file);
+    const map = parseSalesRepWorkbook(wb);
+    if (Object.keys(map).length === 0) {
+      showStatus('No sales rep mappings found. Expected columns "Ref #" and "Sales Rep(s)".', 'error');
+      return;
+    }
+    const result = mergeSalesRepData(map, file.name);
+    await saveState();
+    showStatus(`Sales rep mapping done · ${result.updated} invoices updated from ${result.mapped} mappings`, 'success');
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    showStatus('Failed to read file: ' + e.message, 'error');
+  }
+}
+
+async function handleContactFile(file) {
+  showStatus('Reading Contact file…', 'info', true);
+  try {
+    const wb = await readFileAsWorkbook(file);
+    const contacts = parseContactWorkbook(wb);
+    if (Object.keys(contacts).length === 0) {
+      showStatus('No contact data found. Expected columns: Customer, Billing Street, Billing City, Billing ZIP.', 'error');
+      return;
+    }
+    // Merge: keep existing, overwrite with new where present
+    let added = 0, updated = 0;
+    Object.entries(contacts).forEach(([customer, info]) => {
+      if (STATE.contacts[customer]) {
+        // Only count as updated if address actually changed
+        const existing = STATE.contacts[customer];
+        if (existing.billStreet !== info.billStreet || existing.billCity !== info.billCity || existing.billZip !== info.billZip) {
+          updated++;
+        }
+      } else {
+        added++;
+      }
+      STATE.contacts[customer] = info;
+    });
+    STATE.meta.lastContactUpload = nowISO();
+    STATE.meta.lastContactFile = file.name;
+    STATE.history.unshift({
+      when: nowISO(), type: 'contacts', filename: file.name,
+      added, updated, total: Object.keys(STATE.contacts).length
+    });
+    STATE.history = STATE.history.slice(0, 100);
+    await saveState();
+    // Match against open invoices to report coverage
+    const overdueNames = new Set(STATE.invoices.map(i => i.name));
+    let coverage = 0;
+    overdueNames.forEach(n => { if (STATE.contacts[n]) coverage++; });
+    showStatus(`Contacts imported · ${added} added · ${updated} updated · ${coverage}/${overdueNames.size} open invoices have addresses`, 'success');
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    showStatus('Failed to read file: ' + e.message, 'error');
+  }
+}
+
+async function handleEmailFile(file) {
+  showStatus('Reading Email Follow-Up file…', 'info', true);
+  try {
+    let wb;
+    // Support both XLSX and CSV
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      const text = await file.text();
+      wb = XLSX.read(text, { type: 'string' });
+    } else {
+      wb = await readFileAsWorkbook(file);
+    }
+    const stats = parseEmailFollowupWorkbook(wb);
+    if (Object.keys(stats).length === 0) {
+      showStatus('No reminder data found. Expected columns: Ref #, Template, Sent At. Only "Invoice Due Reminder" and "Invoice Overdue Reminder" templates are counted.', 'error');
+      return;
+    }
+    const result = mergeEmailFollowupData(stats, file.name);
+    await saveState();
+    showStatus(`Email follow-up imported · ${result.matched} invoices matched · ${result.withReminders} with reminders · ${result.withOverdueReminders} with overdue reminders`, 'success');
+    renderAll();
+  } catch (e) {
+    console.error(e);
+    showStatus('Failed to read file: ' + e.message, 'error');
+  }
+}
+
+// =====================================================================
+// RENDER
+// =====================================================================
+
+function renderAll() {
+  renderHeaderMeta();
+  renderLedger();
+  renderSummary();
+  renderAging();
+  renderMonthly();
+  renderCollections();
+  renderDemand();
+  renderManage();
+}
+
+function renderHeaderMeta() {
+  document.getElementById('ledgerCount').textContent = STATE.invoices.length;
+  const total = STATE.invoices.reduce((s, r) => s + (r.openBalance || 0), 0);
+  document.getElementById('grandTotal').textContent = fmtMoney(total);
+  const last = STATE.meta.lastQboUpload;
+  document.getElementById('lastUploadDisplay').textContent = last ? 'Last upload · ' + fmtDateTime(last) : 'No data yet';
+  const collCount = STATE.invoices.filter(r => r.inCollections).length;
+  document.getElementById('collectionsCount').textContent = collCount;
+  const demandCount = STATE.invoices.filter(r => r.demandLetterSent).length;
+  document.getElementById('demandCount').textContent = demandCount;
+}
+
+// ---- Ledger ----
+function getFilteredSorted() {
+  const t = STATE.currentFilters.text.toLowerCase().trim();
+  const rep = STATE.currentFilters.rep;
+  const year = STATE.currentFilters.year;
+  const status = STATE.currentFilters.status;
+
+  let rows = STATE.invoices.filter(r => {
+    if (rep && r.salesRep !== rep) return false;
+    if (year) {
+      const d = parseAnyDate(r.date);
+      if (!d || String(d.getFullYear()) !== String(year)) return false;
+    }
+    if (status === 'collections' && !r.inCollections) return false;
+    if (status === 'not-collections' && r.inCollections) return false;
+    if (status === 'demand-sent' && !r.demandLetterSent) return false;
+    if (status === 'demand-not-sent' && r.demandLetterSent) return false;
+    if (t) {
+      const blob = [r.num, r.name, r.notes, r.salesRep, r.memo, fmtDate(r.date), fmtDate(r.dueDate)].join(' ').toLowerCase();
+      if (!blob.includes(t)) return false;
+    }
+    return true;
+  });
+
+  const { key, dir } = STATE.currentSort;
+  rows.sort((a, b) => {
+    let va, vb;
+    if (key === 'date')          { va = parseAnyDate(a.date)?.getTime() || 0;     vb = parseAnyDate(b.date)?.getTime() || 0; }
+    else if (key === 'dueDate')  { va = parseAnyDate(a.dueDate)?.getTime() || 0;  vb = parseAnyDate(b.dueDate)?.getTime() || 0; }
+    else if (key === 'amount' || key === 'openBalance') { va = a[key] || 0; vb = b[key] || 0; }
+    else if (key === 'collections') {
+      va = a.inCollections ? (parseAnyDate(a.collectionsDate)?.getTime() || 1) : 0;
+      vb = b.inCollections ? (parseAnyDate(b.collectionsDate)?.getTime() || 1) : 0;
+    }
+    else if (key === 'reminders') {
+      // Sort by total reminder count (combined), then by overdue count
+      va = (a.reminderCount || 0) + (a.overdueReminderCount || 0) * 10;
+      vb = (b.reminderCount || 0) + (b.overdueReminderCount || 0) * 10;
+    }
+    else if (key === 'num') { va = String(a.num || ''); vb = String(b.num || ''); }
+    else { va = String(a[key] || '').toLowerCase(); vb = String(b[key] || '').toLowerCase(); }
+    if (va < vb) return dir === 'asc' ? -1 : 1;
+    if (va > vb) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  return rows;
+}
+
+function renderLedger() {
+  // Populate filter dropdowns
+  const reps = [...new Set(STATE.invoices.map(r => r.salesRep).filter(Boolean))].sort();
+  const repSel = document.getElementById('filterRep');
+  const prevRep = repSel.value;
+  repSel.innerHTML = '<option value="">All</option>' + reps.map(r => `<option value="${escapeAttr(r)}">${escapeHtml(r)}</option>`).join('');
+  repSel.value = prevRep;
+
+  const years = [...new Set(STATE.invoices.map(r => {
+    const d = parseAnyDate(r.date);
+    return d ? d.getFullYear() : null;
+  }).filter(Boolean))].sort();
+  const yearSel = document.getElementById('filterYear');
+  const prevYear = yearSel.value;
+  yearSel.innerHTML = '<option value="">All</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+  yearSel.value = prevYear;
+
+  const rows = getFilteredSorted();
+
+  // Sort indicators
+  document.querySelectorAll('#ledgerTable thead th').forEach(th => {
+    const k = th.getAttribute('data-sort');
+    th.classList.toggle('sorted', k === STATE.currentSort.key);
+    const ind = th.querySelector('.sort-ind');
+    if (ind) ind.textContent = (k === STATE.currentSort.key) ? (STATE.currentSort.dir === 'asc' ? '↑' : '↓') : '↕';
+  });
+
+  const body = document.getElementById('ledgerBody');
+  if (STATE.invoices.length === 0) {
+    body.innerHTML = '';
+    document.getElementById('ledgerEmpty').style.display = 'block';
+  } else {
+    document.getElementById('ledgerEmpty').style.display = 'none';
+    body.innerHTML = rows.map(r => `
+      <tr class="${r.inCollections ? 'in-collections' : ''}">
+        <td>${fmtDate(r.date)}</td>
+        <td class="num">${escapeHtml(r.num)}</td>
+        <td class="client">${escapeHtml(r.name)}</td>
+        <td>${fmtDate(r.dueDate)}</td>
+        <td class="num">${fmtMoney(r.amount)}</td>
+        <td class="num">${fmtMoney(r.openBalance)}</td>
+        <td>${escapeHtml(r.salesRep || '—')}</td>
+        <td class="reminders-cell">${formatReminderCell(r)}</td>
+        <td class="collections-cell">
+          ${r.inCollections
+            ? `<span class="collections-badge">In Collections</span>${r.collectionsDate ? `<span class="date-text">${fmtDate(r.collectionsDate)}</span>` : ''}`
+            : `<button class="collections-toggle" data-mark-collections="${escapeAttr(r.num)}">Mark as Collections</button>`}
+        </td>
+        <td class="notes-cell">
+          <div class="notes-text">${escapeHtml(r.notes || '')}</div>
+          <button class="notes-edit-btn" data-edit-num="${escapeAttr(r.num)}">${r.notes ? 'Edit' : '+ Add'} notes</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+}
+
+// ---- Summary ----
+function renderSummary() {
+  const inv = STATE.invoices;
+  const total = inv.reduce((s, r) => s + (r.openBalance || 0), 0);
+  const clients = new Set(inv.map(r => r.name)).size;
+  const reps = new Set(inv.map(r => r.salesRep).filter(Boolean)).size;
+  const collInv = inv.filter(r => r.inCollections);
+  const collTotal = collInv.reduce((s, r) => s + (r.openBalance || 0), 0);
+
+  const now = new Date();
+  let over90 = 0;
+  inv.forEach(r => {
+    const d = parseAnyDate(r.dueDate || r.date);
+    if (d) {
+      const days = (now - d) / (1000 * 60 * 60 * 24);
+      if (days > 90) over90 += (r.openBalance || 0);
+    }
+  });
+
+  document.getElementById('summaryMetrics').innerHTML = `
+    <div class="metric rust">
+      <div class="label">Total Open Balance</div>
+      <div class="value">${fmtMoney(total)}</div>
+      <div class="sub">${inv.length} invoice${inv.length === 1 ? '' : 's'}</div>
+    </div>
+    <div class="metric amber">
+      <div class="label">Over 90 Days Past Due</div>
+      <div class="value">${fmtMoney(over90)}</div>
+      <div class="sub">based on due date</div>
+    </div>
+    <div class="metric bark">
+      <div class="label">In Collections</div>
+      <div class="value">${fmtMoney(collTotal)}</div>
+      <div class="sub">${collInv.length} invoice${collInv.length === 1 ? '' : 's'}</div>
+    </div>
+    <div class="metric leaf">
+      <div class="label">Unique Clients</div>
+      <div class="value">${clients}</div>
+      <div class="sub">${reps} active sales rep${reps === 1 ? '' : 's'}</div>
+    </div>
+  `;
+
+  // By Client
+  const byClient = {};
+  inv.forEach(r => {
+    if (!byClient[r.name]) byClient[r.name] = { sum: 0, count: 0 };
+    byClient[r.name].sum += (r.openBalance || 0);
+    byClient[r.name].count++;
+  });
+  const clientRows = Object.entries(byClient).sort((a,b) => b[1].sum - a[1].sum);
+  const maxClient = clientRows.length ? clientRows[0][1].sum : 1;
+  document.getElementById('pivotByClient').innerHTML = clientRows.map(([name, v]) => `
+    <div class="pivot-row" data-jump-client="${escapeAttr(name)}">
+      <div class="name">${escapeHtml(name)}</div>
+      <div class="count">${v.count}</div>
+      <div class="amt">${fmtMoney(v.sum)}</div>
+      <div class="bar" style="width: ${(v.sum / maxClient * 100).toFixed(1)}%"></div>
+    </div>
+  `).join('') + `
+    <div class="pivot-row totalrow">
+      <div class="name">TOTAL · ${clientRows.length} clients</div>
+      <div class="count">${inv.length}</div>
+      <div class="amt">${fmtMoney(total)}</div>
+    </div>
+  `;
+
+  // By Sales Rep
+  const byRep = {};
+  inv.forEach(r => {
+    const rep = r.salesRep || '(Unassigned)';
+    if (!byRep[rep]) byRep[rep] = { sum: 0, count: 0 };
+    byRep[rep].sum += (r.openBalance || 0);
+    byRep[rep].count++;
+  });
+  const repRows = Object.entries(byRep).sort((a,b) => b[1].sum - a[1].sum);
+  const maxRep = repRows.length ? repRows[0][1].sum : 1;
+  document.getElementById('pivotBySalesRep').innerHTML = repRows.map(([rep, v]) => `
+    <div class="pivot-row" data-jump-rep="${escapeAttr(rep === '(Unassigned)' ? '' : rep)}">
+      <div class="name">${escapeHtml(rep)}</div>
+      <div class="count">${v.count}</div>
+      <div class="amt">${fmtMoney(v.sum)}</div>
+      <div class="bar" style="width: ${(v.sum / maxRep * 100).toFixed(1)}%"></div>
+    </div>
+  `).join('') + `
+    <div class="pivot-row totalrow">
+      <div class="name">TOTAL · ${repRows.length} rep${repRows.length === 1 ? '' : 's'}</div>
+      <div class="count">${inv.length}</div>
+      <div class="amt">${fmtMoney(total)}</div>
+    </div>
+  `;
+}
+
+// ---- Aging ----
+function renderAging() {
+  const matrix = {};
+  const yearTotals = {};
+  const monthTotals = Array(12).fill(0);
+  let grandTotal = 0;
+
+  STATE.invoices.forEach(r => {
+    const d = parseAnyDate(r.date);
+    if (!d) return;
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    if (!matrix[y]) matrix[y] = {};
+    if (!matrix[y][m]) matrix[y][m] = { sum: 0, count: 0 };
+    matrix[y][m].sum += (r.openBalance || 0);
+    matrix[y][m].count++;
+    yearTotals[y] = (yearTotals[y] || 0) + (r.openBalance || 0);
+    monthTotals[m] += (r.openBalance || 0);
+    grandTotal += (r.openBalance || 0);
+  });
+
+  const years = Object.keys(matrix).map(Number).sort();
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  if (years.length === 0) {
+    document.getElementById('agingMatrix').innerHTML = '<div class="empty-state"><p>No data to age yet.</p></div>';
+    return;
+  }
+
+  const now = new Date();
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 12, 1);
+
+  let html = '<div class="aging-grid">';
+  html += '<div class="cell head">Year</div>';
+  for (let m = 0; m < 12; m++) html += `<div class="cell head">${monthNames[m]}</div>`;
+  html += '<div class="cell head">Total</div>';
+
+  years.forEach(y => {
+    html += `<div class="cell yearlabel">${y}</div>`;
+    for (let m = 0; m < 12; m++) {
+      const c = matrix[y]?.[m];
+      const cellDate = new Date(y, m, 1);
+      const isHot = cellDate < cutoff;
+      const cls = c ? ('has-data ' + (isHot ? 'hot' : '')) : 'empty';
+      const content = c ? fmtMoneyTight(c.sum) : '·';
+      const title = c ? `${c.count} invoice${c.count===1?'':'s'} · ${fmtMoney(c.sum)}` : 'No invoices';
+      const data = c ? `data-drill-year="${y}" data-drill-month="${m}"` : '';
+      html += `<div class="cell ${cls}" ${data} title="${escapeAttr(title)}">${content}</div>`;
+    }
+    html += `<div class="cell totalcol" data-drill-year="${y}">${fmtMoneyTight(yearTotals[y])}</div>`;
+  });
+
+  html += `<div class="cell totalrow yearlabel">Total</div>`;
+  for (let m = 0; m < 12; m++) {
+    html += `<div class="cell totalrow">${fmtMoneyTight(monthTotals[m])}</div>`;
+  }
+  html += `<div class="cell totalrow yearlabel">${fmtMoneyTight(grandTotal)}</div>`;
+  html += '</div>';
+
+  document.getElementById('agingMatrix').innerHTML = html;
+}
+
+// ---- Monthly ----
+function renderMonthly() {
+  const byMonth = {};
+  STATE.invoices.forEach(r => {
+    const d = parseAnyDate(r.date);
+    if (!d) return;
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(r);
+  });
+
+  const keys = Object.keys(byMonth).sort().reverse();
+  if (keys.length === 0) {
+    document.getElementById('monthList').innerHTML = '<div class="empty-state"><p>No monthly data yet.</p></div>';
+    return;
+  }
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  document.getElementById('monthList').innerHTML = keys.map(k => {
+    const [y, m] = k.split('-');
+    const items = byMonth[k].slice().sort((a,b) => (b.openBalance || 0) - (a.openBalance || 0));
+    const sum = items.reduce((s, r) => s + (r.openBalance || 0), 0);
+    const collCount = items.filter(r => r.inCollections).length;
+    return `
+      <div class="month-row" data-month-key="${k}">
+        <div class="month-row-header">
+          <div class="caret">▶</div>
+          <div>
+            <div class="label">${monthNames[parseInt(m,10)-1]} ${y}</div>
+            <div class="sub">Invoice month${collCount ? ` · ${collCount} in collections` : ''}</div>
+          </div>
+          <div class="ct">${items.length} invoice${items.length===1?'':'s'}</div>
+          <div class="amt">${fmtMoney(sum)}</div>
+        </div>
+        <div class="month-detail">
+          <table>
+            <thead><tr>
+              <th>Inv. Date</th><th>Invoice #</th><th>Client</th><th>Due Date</th>
+              <th>Amount</th><th>Open Bal.</th><th>Sales Rep</th><th>Reminders</th><th>Collections</th><th>Notes</th>
+            </tr></thead>
+            <tbody>
+              ${items.map(r => `
+                <tr class="${r.inCollections ? 'in-collections' : ''}">
+                  <td>${fmtDate(r.date)}</td>
+                  <td class="num">${escapeHtml(r.num)}</td>
+                  <td class="client">${escapeHtml(r.name)}</td>
+                  <td>${fmtDate(r.dueDate)}</td>
+                  <td class="num">${fmtMoney(r.amount)}</td>
+                  <td class="num">${fmtMoney(r.openBalance)}</td>
+                  <td>${escapeHtml(r.salesRep || '—')}</td>
+                  <td class="reminders-cell">${formatReminderCell(r)}</td>
+                  <td>${r.inCollections ? `<span class="collections-badge">${r.collectionsDate ? fmtDate(r.collectionsDate) : 'Yes'}</span>` : '—'}</td>
+                  <td class="notes-cell"><div class="notes-text">${escapeHtml(r.notes || '')}</div></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---- Collections tab ----
+function renderCollections() {
+  const inv = STATE.invoices.filter(r => r.inCollections).slice().sort((a,b) => {
+    const da = parseAnyDate(a.collectionsDate)?.getTime() || 0;
+    const db = parseAnyDate(b.collectionsDate)?.getTime() || 0;
+    return db - da; // most recent first
+  });
+  const total = inv.reduce((s, r) => s + (r.openBalance || 0), 0);
+  document.getElementById('collectionsMeta').textContent = `${inv.length} invoice${inv.length === 1 ? '' : 's'} · ${fmtMoney(total)} total`;
+
+  const body = document.getElementById('collectionsBody');
+  if (inv.length === 0) {
+    body.innerHTML = '';
+    document.getElementById('collectionsEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('collectionsEmpty').style.display = 'none';
+  const now = Date.now();
+  body.innerHTML = inv.map(r => {
+    const cd = parseAnyDate(r.collectionsDate);
+    const days = cd ? Math.floor((now - cd.getTime()) / 86400000) : null;
+    return `
+      <tr class="in-collections">
+        <td>${r.collectionsDate ? fmtDate(r.collectionsDate) : '—'}</td>
+        <td>${fmtDate(r.date)}</td>
+        <td class="num">${escapeHtml(r.num)}</td>
+        <td class="client">${escapeHtml(r.name)}</td>
+        <td class="num">${fmtMoney(r.openBalance)}</td>
+        <td>${escapeHtml(r.salesRep || '—')}</td>
+        <td class="num">${days !== null ? days + ' d' : '—'}</td>
+        <td class="notes-cell">
+          <div class="notes-text">${escapeHtml(r.notes || '')}</div>
+          <button class="notes-edit-btn" data-edit-num="${escapeAttr(r.num)}">Edit</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ---- Demand letters tab ----
+function renderDemand() {
+  const inv = STATE.invoices.filter(r => r.demandLetterSent).slice().sort((a,b) => {
+    const da = parseAnyDate(a.demandLetterDate)?.getTime() || 0;
+    const db = parseAnyDate(b.demandLetterDate)?.getTime() || 0;
+    return db - da;
+  });
+  const total = inv.reduce((s, r) => s + (r.openBalance || 0), 0);
+  document.getElementById('demandMeta').textContent = `${inv.length} invoice${inv.length === 1 ? '' : 's'} · ${fmtMoney(total)} total`;
+
+  const body = document.getElementById('demandBody');
+  if (inv.length === 0) {
+    body.innerHTML = '';
+    document.getElementById('demandEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('demandEmpty').style.display = 'none';
+  const now = Date.now();
+  body.innerHTML = inv.map(r => {
+    const cd = parseAnyDate(r.demandLetterDate);
+    const days = cd ? Math.floor((now - cd.getTime()) / 86400000) : null;
+    return `
+      <tr>
+        <td>${r.demandLetterDate ? fmtDate(r.demandLetterDate) : '—'}</td>
+        <td class="client">${escapeHtml(r.name)}</td>
+        <td class="num">${escapeHtml(r.num)}</td>
+        <td>${fmtDate(r.date)}</td>
+        <td class="num">${fmtMoney(r.openBalance)}</td>
+        <td>${escapeHtml(r.salesRep || '—')}</td>
+        <td class="num">${days !== null ? days + ' d' : '—'}</td>
+        <td>
+          <button class="btn small secondary" data-reprint-client="${escapeAttr(r.name)}">Re-Print</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ---- Manage ----
+function renderManage() {
+  const qboEl = document.getElementById('qboLastUpload');
+  if (STATE.meta.lastQboUpload) {
+    qboEl.style.display = 'inline-block';
+    qboEl.textContent = 'Last upload: ' + fmtDateTime(STATE.meta.lastQboUpload) + (STATE.meta.lastQboFile ? ` · ${STATE.meta.lastQboFile}` : '');
+  } else {
+    qboEl.style.display = 'none';
+  }
+  const repEl = document.getElementById('repLastUpload');
+  if (STATE.meta.lastRepUpload) {
+    repEl.style.display = 'inline-block';
+    repEl.textContent = 'Last upload: ' + fmtDateTime(STATE.meta.lastRepUpload) + (STATE.meta.lastRepFile ? ` · ${STATE.meta.lastRepFile}` : '');
+  } else {
+    repEl.style.display = 'none';
+  }
+  const contactEl = document.getElementById('contactLastUpload');
+  if (STATE.meta.lastContactUpload) {
+    contactEl.style.display = 'inline-block';
+    const totalContacts = Object.keys(STATE.contacts).length;
+    contactEl.textContent = `Last upload: ${fmtDateTime(STATE.meta.lastContactUpload)} · ${totalContacts} contact${totalContacts===1?'':'s'} on file`;
+  } else {
+    contactEl.style.display = 'none';
+  }
+  const emailEl = document.getElementById('emailLastUpload');
+  if (STATE.meta.lastEmailUpload) {
+    emailEl.style.display = 'inline-block';
+    const remTotal = STATE.invoices.reduce((s, r) => s + (r.reminderCount || 0), 0);
+    const overTotal = STATE.invoices.reduce((s, r) => s + (r.overdueReminderCount || 0), 0);
+    emailEl.textContent = `Last upload: ${fmtDateTime(STATE.meta.lastEmailUpload)} · ${remTotal} reminder${remTotal===1?'':'s'} · ${overTotal} overdue reminder${overTotal===1?'':'s'}`;
+  } else {
+    emailEl.style.display = 'none';
+  }
+
+  const list = document.getElementById('historyList');
+  if (STATE.history.length === 0) {
+    list.innerHTML = '<div class="empty-state" style="padding: 30px 20px"><p>No uploads yet.</p></div>';
+    return;
+  }
+  list.innerHTML = STATE.history.map(h => {
+    const deltaParts = [];
+    if (h.type === 'qbo') {
+      if (h.added) deltaParts.push(`<span class="added">+${h.added} added</span>`);
+      if (h.updated) deltaParts.push(`<span class="updated">~${h.updated} updated</span>`);
+      if (h.removed) deltaParts.push(`<span class="removed">-${h.removed} removed</span>`);
+      if (h.notesPreserved) deltaParts.push(`<span style="color:var(--bark-deep)">${h.notesPreserved} notes kept</span>`);
+      if (h.collectionsPreserved) deltaParts.push(`<span style="color:var(--rust)">${h.collectionsPreserved} coll. kept</span>`);
+    } else if (h.type === 'salesRep') {
+      deltaParts.push(`<span class="added">${h.updated} reps assigned</span>`);
+      if (h.mappedCount) deltaParts.push(`<span style="color:var(--ink-soft)">from ${h.mappedCount} mappings</span>`);
+    } else if (h.type === 'contacts') {
+      if (h.added) deltaParts.push(`<span class="added">+${h.added} new</span>`);
+      if (h.updated) deltaParts.push(`<span class="updated">~${h.updated} updated</span>`);
+      if (h.total) deltaParts.push(`<span style="color:var(--ink-soft)">${h.total} total on file</span>`);
+    } else if (h.type === 'email') {
+      if (h.matched) deltaParts.push(`<span class="added">${h.matched} invoices matched</span>`);
+      if (h.withReminders) deltaParts.push(`<span style="color:var(--ink-soft)">${h.withReminders} w/ reminders</span>`);
+      if (h.withOverdueReminders) deltaParts.push(`<span style="color:var(--rust)">${h.withOverdueReminders} w/ overdue</span>`);
+    }
+    return `
+      <div class="history-item">
+        <div class="when">${fmtDateTime(h.when)}</div>
+        <div class="what">
+          <span class="pill ${h.type === 'qbo' ? 'rust' : (h.type === 'salesRep' ? 'bark' : '')}" style="${h.type === 'contacts' ? 'background:var(--amber); color:var(--paper);' : (h.type === 'email' ? 'background:var(--leaf); color:var(--paper);' : '')}">${h.type === 'qbo' ? 'QBO Import' : (h.type === 'salesRep' ? 'Sales Rep' : (h.type === 'email' ? 'Email Follow-Up' : 'Contacts'))}</span>
+          ${h.filename ? '<span style="margin-left:8px; font-family:JetBrains Mono, monospace; font-size:11px;">' + escapeHtml(h.filename) + '</span>' : ''}
+        </div>
+        <div class="delta">${deltaParts.join(' · ')}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =====================================================================
+// EXPORTS
+// =====================================================================
+
+function exportLedgerCSV() {
+  const rows = getFilteredSorted();
+  const headers = ['Date','Transaction Type','Num','Name','Memo/Description','Due Date','Amount','Open Balance','Sales Rep','In Collections','Collections Date','Reminder Count','Reminder Last Sent','Overdue Reminder Count','Overdue Reminder Last Sent','Demand Letter Sent','Demand Letter Date','Notes'];
+  const csv = [headers.join(',')].concat(rows.map(r => [
+    csvCell(fmtDate(r.date)),
+    csvCell(r.transactionType || 'Invoice'),
+    csvCell(r.num),
+    csvCell(r.name),
+    csvCell(r.memo),
+    csvCell(fmtDate(r.dueDate)),
+    r.amount || 0,
+    r.openBalance || 0,
+    csvCell(r.salesRep),
+    r.inCollections ? 'Yes' : 'No',
+    csvCell(fmtDate(r.collectionsDate)),
+    r.reminderCount || 0,
+    csvCell(fmtDate(r.reminderLastSent)),
+    r.overdueReminderCount || 0,
+    csvCell(fmtDate(r.overdueReminderLastSent)),
+    r.demandLetterSent ? 'Yes' : 'No',
+    csvCell(fmtDate(r.demandLetterDate)),
+    csvCell(r.notes)
+  ].join(','))).join('\n');
+  downloadFile(csv, 'overdue_ledger_' + dateStamp() + '.csv', 'text/csv');
+}
+
+function exportLedgerXLSX() {
+  const rows = getFilteredSorted();
+  const data = rows.map(r => ({
+    'Date':                       fmtDate(r.date),
+    'Transaction Type':           r.transactionType || 'Invoice',
+    'Num':                        r.num,
+    'Name':                       r.name,
+    'Memo/Description':           r.memo,
+    'Due Date':                   fmtDate(r.dueDate),
+    'Amount':                     r.amount || 0,
+    'Open Balance':               r.openBalance || 0,
+    'Sales Rep':                  r.salesRep || '',
+    'In Collections':             r.inCollections ? 'Yes' : 'No',
+    'Collections Date':           fmtDate(r.collectionsDate),
+    'Reminder Count':             r.reminderCount || 0,
+    'Reminder Last Sent':         fmtDate(r.reminderLastSent),
+    'Overdue Reminder Count':     r.overdueReminderCount || 0,
+    'Overdue Reminder Last Sent': fmtDate(r.overdueReminderLastSent),
+    'Demand Letter Sent':         r.demandLetterSent ? 'Yes' : 'No',
+    'Demand Letter Date':         fmtDate(r.demandLetterDate),
+    'Notes':                      r.notes || ''
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Overdue Ledger');
+  XLSX.writeFile(wb, 'overdue_ledger_' + dateStamp() + '.xlsx');
+}
+
+function csvCell(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v).replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+function dateStamp() {
+  const d = new Date();
+  return d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+}
+function downloadFile(content, name, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// =====================================================================
+// INVOICE EDITOR MODAL  (notes + collections in one place)
+// =====================================================================
+
+function openInvoiceEditor(num) {
+  const inv = STATE.invoices.find(r => r.num === num);
+  if (!inv) return;
+  STATE.editingNum = num;
+  // Capture snapshot of editable fields for stale-data detection at save time
+  STATE.editingSnapshot = {
+    notes:            inv.notes || '',
+    salesRep:         inv.salesRep || '',
+    inCollections:    !!inv.inCollections,
+    collectionsDate:  inv.collectionsDate || '',
+    demandLetterSent: !!inv.demandLetterSent,
+    demandLetterDate: inv.demandLetterDate || ''
+  };
+  document.getElementById('invModalTitle').textContent = `Invoice ${inv.num}`;
+  // Show reminder info if present
+  const rc = inv.reminderCount || 0, orc = inv.overdueReminderCount || 0;
+  let remSummary = '';
+  if (rc > 0 || orc > 0) {
+    const parts = [];
+    if (rc > 0) parts.push(`${rc} due reminder${rc===1?'':'s'}${inv.reminderLastSent ? ' (last ' + fmtDate(inv.reminderLastSent) + ')' : ''}`);
+    if (orc > 0) parts.push(`${orc} overdue reminder${orc===1?'':'s'}${inv.overdueReminderLastSent ? ' (last ' + fmtDate(inv.overdueReminderLastSent) + ')' : ''}`);
+    remSummary = ' · ' + parts.join(' · ');
+  }
+  document.getElementById('invModalSub').textContent = `${inv.name} · Invoice date ${fmtDate(inv.date)} · ${fmtMoney(inv.openBalance)} open${remSummary}`;
+
+  const chk = document.getElementById('invCollChk');
+  const dateField = document.getElementById('collDateField');
+  const dateInput = document.getElementById('invCollDate');
+
+  chk.checked = !!inv.inCollections;
+  dateField.style.display = chk.checked ? 'block' : 'none';
+  dateInput.value = inv.collectionsDate || (chk.checked ? new Date().toISOString().slice(0,10) : '');
+
+  document.getElementById('invNotes').value = inv.notes || '';
+
+  const metaParts = [];
+  if (inv.firstSeen) metaParts.push('First seen: ' + fmtDateTime(inv.firstSeen));
+  if (inv.lastUpdated && inv.lastUpdated !== inv.firstSeen) metaParts.push('Last updated: ' + fmtDateTime(inv.lastUpdated));
+  document.getElementById('invMeta').textContent = metaParts.join(' · ');
+
+  // Demand letter section
+  const clientInvs = getClientInvoices(inv.name);
+  const clientTotal = clientInvs.reduce((s, r) => s + (r.openBalance || 0), 0);
+  const sentInvs = clientInvs.filter(r => r.demandLetterSent);
+  const statusEl = document.getElementById('invDemandStatus');
+  const clearBtn = document.getElementById('invClearDemand');
+  const noteEl = document.getElementById('invDemandNote');
+  if (sentInvs.length > 0) {
+    const latestDate = sentInvs.map(r => r.demandLetterDate).sort().reverse()[0];
+    statusEl.innerHTML = `<span style="color: var(--rust-deep); font-weight: 600;">Sent on ${fmtDate(latestDate)}</span> · ${sentInvs.length} of ${clientInvs.length} client invoice${clientInvs.length===1?'':'s'} marked`;
+    clearBtn.style.display = 'inline-block';
+  } else {
+    statusEl.innerHTML = `<span style="color: var(--ink-soft);">No demand letter sent yet for ${escapeHtml(inv.name)}</span>`;
+    clearBtn.style.display = 'none';
+  }
+  // Address availability
+  const contact = STATE.contacts[inv.name];
+  if (contact && contact.billStreet) {
+    noteEl.innerHTML = `Address on file: ${escapeHtml(contact.billStreet)}, ${escapeHtml(contact.billCity || '')} ${escapeHtml(contact.billZip || '')}. Letter will consolidate all ${clientInvs.length} open invoice${clientInvs.length===1?'':'s'} for this client (${fmtMoney(clientTotal)} total).`;
+  } else {
+    noteEl.innerHTML = `<span style="color: var(--rust); font-weight: 600;">⚠ No mailing address on file for this client.</span> Letter will still print — write the address in by hand or upload a Contact file. Letter will consolidate ${clientInvs.length} open invoice${clientInvs.length===1?'':'s'} (${fmtMoney(clientTotal)} total).`;
+  }
+
+  document.getElementById('invModal').classList.add('show');
+  setTimeout(() => document.getElementById('invNotes').focus(), 100);
+}
+
+function closeInvoiceEditor() {
+  STATE.editingNum = null;
+  STATE.editingSnapshot = null;
+  document.getElementById('invModal').classList.remove('show');
+}
+
+async function saveInvoiceEdits() {
+  if (!STATE.editingNum) return;
+  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
+  if (!inv) return;
+  const chk = document.getElementById('invCollChk').checked;
+  const dateVal = document.getElementById('invCollDate').value;
+  inv.notes = document.getElementById('invNotes').value;
+  inv.inCollections = chk;
+  inv.collectionsDate = chk ? (dateVal || new Date().toISOString().slice(0,10)) : '';
+  inv.lastUpdated = nowISO();
+  const ok = await saveSingleInvoice(STATE.editingNum, STATE.editingSnapshot);
+  if (!ok) {
+    // User cancelled due to stale data — modal stays open with the now-current values
+    showStatus('Save cancelled — sheet had newer changes, your view has been updated.', 'error');
+    // Refresh modal with new values
+    const num = STATE.editingNum;
+    closeInvoiceEditor();
+    openInvoiceEditor(num);
+    return;
+  }
+  closeInvoiceEditor();
+  showStatus('Saved', 'success');
+  renderAll();
+}
+
+async function saveInvoiceEditsQuiet() {
+  // Like saveInvoiceEdits but doesn't close the modal or show status
+  if (!STATE.editingNum) return;
+  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
+  if (!inv) return;
+  const chk = document.getElementById('invCollChk').checked;
+  const dateVal = document.getElementById('invCollDate').value;
+  inv.notes = document.getElementById('invNotes').value;
+  inv.inCollections = chk;
+  inv.collectionsDate = chk ? (dateVal || new Date().toISOString().slice(0,10)) : '';
+  inv.lastUpdated = nowISO();
+  return await saveSingleInvoice(STATE.editingNum, STATE.editingSnapshot);
+}
+
+async function quickMarkCollections(num) {
+  const inv = STATE.invoices.find(r => r.num === num);
+  if (!inv) return;
+  // Snapshot the current state BEFORE modifying so the stale check works
+  const snapshot = {
+    notes:            inv.notes || '',
+    salesRep:         inv.salesRep || '',
+    inCollections:    !!inv.inCollections,
+    collectionsDate:  inv.collectionsDate || '',
+    demandLetterSent: !!inv.demandLetterSent,
+    demandLetterDate: inv.demandLetterDate || ''
+  };
+  inv.inCollections = true;
+  inv.collectionsDate = new Date().toISOString().slice(0,10);
+  inv.lastUpdated = nowISO();
+  const ok = await saveSingleInvoice(num, snapshot);
+  if (ok) {
+    showStatus(`Invoice ${num} marked as sent to collections today`, 'success');
+  } else {
+    // Revert local state since save was cancelled
+    Object.assign(inv, snapshot);
+    showStatus('Cancelled — sheet had newer changes.', 'error');
+  }
+  renderAll();
+}
+
+// =====================================================================
+// DEMAND LETTER GENERATION
+// =====================================================================
+
+const COMPANY = {
+  name:    'Monster Tree Service of Rochester',
+  street:  '5607 Palmyra Road, Suite 81',
+  city:    'Pittsford',
+  state:   'NY',
+  zip:     '14534'
+};
+
+function getClientInvoices(clientName) {
+  // All open invoices for this client, oldest first
+  return STATE.invoices
+    .filter(r => r.name === clientName && (r.openBalance || 0) > 0)
+    .sort((a, b) => {
+      const da = parseAnyDate(a.date)?.getTime() || 0;
+      const db = parseAnyDate(b.date)?.getTime() || 0;
+      return da - db;
+    });
+}
+
+function generateDemandLetter(clientName) {
+  const invs = getClientInvoices(clientName);
+  if (invs.length === 0) {
+    showStatus('No open invoices for this client.', 'error');
+    return;
+  }
+  const contact = STATE.contacts[clientName] || {};
+  const totalDue = invs.reduce((s, r) => s + (r.openBalance || 0), 0);
+
+  const today = new Date();
+  const todayFmt = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Payment deadline: 30 days from today
+  const deadline = new Date(today);
+  deadline.setDate(deadline.getDate() + 30);
+  const deadlineFmt = deadline.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const recipientName = contact.fullName || clientName;
+  const addressLines = [];
+  if (contact.billStreet) addressLines.push(escapeHtml(contact.billStreet));
+  const cityLine = [contact.billCity, 'NY', contact.billZip].filter(Boolean).join(', ').replace('NY,', 'NY');
+  // Better format: City, NY ZIP
+  let cityStateZip = '';
+  if (contact.billCity || contact.billZip) {
+    cityStateZip = [contact.billCity, 'NY ' + (contact.billZip || '')].filter(x => x.trim()).join(', ');
+  }
+  if (cityStateZip) addressLines.push(escapeHtml(cityStateZip));
+  if (addressLines.length === 0) addressLines.push('<em style="color: #999">[Mailing address not on file — write in by hand]</em>');
+
+  const invoiceTableRows = invs.map(r => `
+    <tr>
+      <td>${escapeHtml(r.num)}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${fmtDate(r.dueDate)}</td>
+      <td style="text-align: right;">${fmtMoney(r.openBalance)}</td>
+    </tr>
+  `).join('');
+
+  const invoiceListPlain = invs.map(r => `Invoice #${r.num} dated ${fmtDate(r.date)}`).join(', ');
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Demand for Payment — ${escapeHtml(recipientName)}</title>
+<style>
+  @page { size: letter; margin: 0.75in; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000;
+    max-width: 7in;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+  }
+  .toolbar {
+    background: #f5efe4;
+    border: 1px solid #c9bca3;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    font-family: 'Arial', sans-serif;
+    font-size: 11pt;
+  }
+  .toolbar button {
+    background: #1a1612;
+    color: #f5efe4;
+    border: none;
+    padding: 8px 18px;
+    font-size: 11pt;
+    cursor: pointer;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+  .toolbar button:hover { background: #2d5016; }
+  .toolbar .info { color: #555; font-size: 10pt; }
+  @media print {
+    .toolbar { display: none; }
+    body { padding: 0; max-width: none; }
+  }
+  .letterhead {
+    text-align: left;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #000;
+  }
+  .letterhead .company {
+    font-family: 'Georgia', serif;
+    font-size: 18pt;
+    font-weight: bold;
+    letter-spacing: 0.02em;
+    margin-bottom: 4px;
+  }
+  .letterhead .addr { font-size: 10pt; color: #333; }
+  .date-line { margin-bottom: 28px; }
+  .recipient { margin-bottom: 28px; line-height: 1.35; }
+  .recipient .name { font-weight: bold; }
+  .subject {
+    margin-bottom: 24px;
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  .salutation { margin-bottom: 16px; }
+  p { margin-bottom: 14px; text-align: justify; }
+  table.invoices {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0;
+    font-size: 11pt;
+  }
+  table.invoices th, table.invoices td {
+    border: 1px solid #000;
+    padding: 6px 10px;
+  }
+  table.invoices th {
+    background: #e8e3d8;
+    text-align: left;
+    font-weight: bold;
+  }
+  table.invoices tfoot td {
+    font-weight: bold;
+    background: #f5efe4;
+  }
+  .signature-block { margin-top: 48px; }
+  .signature-line { border-top: 1px solid #000; width: 280px; padding-top: 4px; margin-bottom: 4px; }
+  .deadline-emphasis {
+    background: #fff4e0;
+    border-left: 4px solid #c67c00;
+    padding: 12px 16px;
+    margin: 18px 0;
+    font-weight: bold;
+  }
+  .footer-note {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid #ccc;
+    font-size: 10pt;
+    color: #555;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div>
+    <button onclick="window.print()">🖨 Print this Letter</button>
+    <button onclick="window.close()" style="background: transparent; color: #1a1612; border: 1px solid #1a1612; margin-left: 6px;">Close</button>
+  </div>
+  <div class="info">Use your browser's print dialog. Choose "Save as PDF" to keep a digital copy.</div>
+</div>
+
+<div class="letterhead">
+  <div class="company">${COMPANY.name}</div>
+  <div class="addr">${COMPANY.street} &middot; ${COMPANY.city}, ${COMPANY.state} ${COMPANY.zip}</div>
+</div>
+
+<div class="date-line">${todayFmt}</div>
+
+<div class="recipient">
+  <div class="name">${escapeHtml(recipientName)}</div>
+  ${addressLines.map(l => `<div>${l}</div>`).join('')}
+</div>
+
+<div class="subject">RE: Final Demand for Payment — Past Due Account · Total Due: ${fmtMoney(totalDue)}</div>
+
+<div class="salutation">Dear ${escapeHtml(recipientName)},</div>
+
+<p>This letter is a formal demand for payment of an outstanding balance owed to <strong>${COMPANY.name}</strong> for tree services rendered. Our records indicate that the following invoice${invs.length === 1 ? ' remains' : 's remain'} unpaid as of the date of this letter:</p>
+
+<table class="invoices">
+  <thead>
+    <tr>
+      <th>Invoice #</th>
+      <th>Invoice Date</th>
+      <th>Due Date</th>
+      <th style="text-align: right;">Amount Due</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${invoiceTableRows}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="3" style="text-align: right;">TOTAL DUE:</td>
+      <td style="text-align: right;">${fmtMoney(totalDue)}</td>
+    </tr>
+  </tfoot>
+</table>
+
+<p>Despite previous attempts to collect this balance, payment has not been received. We are now making formal demand for the full amount listed above.</p>
+
+<div class="deadline-emphasis">
+  Payment in the amount of ${fmtMoney(totalDue)} must be received no later than ${deadlineFmt} (30 days from the date of this letter).
+</div>
+
+<p>Payment may be made by check payable to "${COMPANY.name}" and mailed to the address shown above. If you have already remitted payment, please disregard this notice and accept our thanks.</p>
+
+<p><strong>If payment is not received in full by ${deadlineFmt}, ${COMPANY.name} will pursue all available remedies, which may include the filing of a claim in the appropriate New York State court to recover the amount owed, together with any applicable interest, court costs, and other recoverable expenses permitted under New York law.</strong></p>
+
+<p>If you dispute any portion of this debt, or wish to discuss a payment arrangement, please contact our office immediately at the address above. We would prefer to resolve this matter without resorting to legal action.</p>
+
+<p>Govern yourself accordingly.</p>
+
+<div class="signature-block">
+  <p style="margin-bottom: 60px;">Sincerely,</p>
+  <div class="signature-line"></div>
+  <div>${COMPANY.name}</div>
+</div>
+
+<div class="footer-note">
+  This letter constitutes a formal demand for payment under applicable New York State law. Document references: ${escapeHtml(invoiceListPlain)}. Letter generated on ${todayFmt}.
+</div>
+
+</body>
+</html>`;
+
+  // Open in new tab/window
+  const w = window.open('', '_blank');
+  if (!w) {
+    showStatus('Pop-up blocked — allow pop-ups for this site to view the letter.', 'error');
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+
+  // Mark invoices as having had a demand letter sent
+  markDemandLettersSent(invs.map(i => i.num));
+}
+
+async function markDemandLettersSent(invoiceNums) {
+  const today = new Date().toISOString().slice(0,10);
+  // Take snapshots of every invoice we are about to modify (for stale-data check)
+  const snapshots = new Map();
+  STATE.invoices.forEach(inv => {
+    if (invoiceNums.includes(inv.num) && !inv.demandLetterSent) {
+      snapshots.set(inv.num, {
+        notes:            inv.notes || '',
+        salesRep:         inv.salesRep || '',
+        inCollections:    !!inv.inCollections,
+        collectionsDate:  inv.collectionsDate || '',
+        demandLetterSent: !!inv.demandLetterSent,
+        demandLetterDate: inv.demandLetterDate || ''
+      });
+      inv.demandLetterSent = true;
+      inv.demandLetterDate = today;
+      inv.lastUpdated = nowISO();
+    }
+  });
+  if (snapshots.size === 0) {
+    showStatus('Demand letter generated (already marked previously)', 'success');
+    return;
+  }
+  // Save each one with its snapshot — single-invoice saves are fast (~300ms each)
+  // and they will warn on stale data per invoice
+  let saved = 0, cancelled = 0;
+  for (const [num, snap] of snapshots.entries()) {
+    const ok = await saveSingleInvoice(num, snap);
+    if (ok) saved++;
+    else {
+      // User cancelled this one — revert the in-memory invoice
+      const inv = STATE.invoices.find(r => r.num === num);
+      if (inv) Object.assign(inv, snap);
+      cancelled++;
+    }
+  }
+  renderAll();
+  if (cancelled === 0) {
+    showStatus(`Demand letter generated · ${saved} invoice${saved===1?'':'s'} marked as sent`, 'success');
+  } else if (saved === 0) {
+    showStatus(`All ${cancelled} mark-as-sent operations cancelled (stale data)`, 'error');
+  } else {
+    showStatus(`Demand letter: ${saved} marked, ${cancelled} cancelled due to stale data`, 'success');
+  }
+}
+
+async function unmarkDemandLetter(invoiceNum) {
+  const inv = STATE.invoices.find(r => r.num === invoiceNum);
+  if (!inv) return;
+  // Snapshot before modification (no modal-level snapshot for this call path)
+  const snapshot = {
+    notes:            inv.notes || '',
+    salesRep:         inv.salesRep || '',
+    inCollections:    !!inv.inCollections,
+    collectionsDate:  inv.collectionsDate || '',
+    demandLetterSent: !!inv.demandLetterSent,
+    demandLetterDate: inv.demandLetterDate || ''
+  };
+  inv.demandLetterSent = false;
+  inv.demandLetterDate = '';
+  inv.lastUpdated = nowISO();
+  const ok = await saveSingleInvoice(invoiceNum, snapshot);
+  if (ok) {
+    showStatus('Demand letter status cleared', 'success');
+  } else {
+    Object.assign(inv, snapshot);
+    showStatus('Cancelled — sheet had newer changes.', 'error');
+  }
+  renderAll();
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+
+function formatReminderCell(r) {
+  const rc = r.reminderCount || 0;
+  const orc = r.overdueReminderCount || 0;
+  if (rc === 0 && orc === 0) return '<span style="color: var(--line);">—</span>';
+  const parts = [];
+  if (rc > 0) {
+    const dt = r.reminderLastSent ? ' · ' + fmtDate(r.reminderLastSent) : '';
+    parts.push(`<div style="font-size:11px; color:var(--ink-soft);"><span style="display:inline-block; min-width:14px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--bark-deep);">${rc}</span> due${dt}</div>`);
+  }
+  if (orc > 0) {
+    const dt = r.overdueReminderLastSent ? ' · ' + fmtDate(r.overdueReminderLastSent) : '';
+    parts.push(`<div style="font-size:11px; color:var(--rust-deep);"><span style="display:inline-block; min-width:14px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600;">${orc}</span> overdue${dt}</div>`);
+  }
+  return parts.join('');
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+// =====================================================================
+// EVENT WIRING
+// =====================================================================
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`.panel[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+// File inputs
+document.getElementById('fileQBO').addEventListener('change', e => {
+  if (e.target.files[0]) handleQBOFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('fileRep').addEventListener('change', e => {
+  if (e.target.files[0]) handleRepFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('fileContact').addEventListener('change', e => {
+  if (e.target.files[0]) handleContactFile(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('fileEmail').addEventListener('change', e => {
+  if (e.target.files[0]) handleEmailFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+// Drag & drop
+function wireDropZone(zoneId, handler) {
+  const z = document.getElementById(zoneId);
+  ['dragenter','dragover'].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); z.classList.add('dragover');
+  }));
+  ['dragleave','drop'].forEach(ev => z.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation(); z.classList.remove('dragover');
+  }));
+  z.addEventListener('drop', e => {
+    if (e.dataTransfer.files[0]) handler(e.dataTransfer.files[0]);
+  });
+}
+wireDropZone('dropQBO', handleQBOFile);
+wireDropZone('dropRep', handleRepFile);
+wireDropZone('dropContact', handleContactFile);
+wireDropZone('dropEmail', handleEmailFile);
+
+// Filters
+document.getElementById('filterText').addEventListener('input', e => { STATE.currentFilters.text = e.target.value; renderLedger(); });
+document.getElementById('filterRep').addEventListener('change', e => { STATE.currentFilters.rep = e.target.value; renderLedger(); });
+document.getElementById('filterYear').addEventListener('change', e => { STATE.currentFilters.year = e.target.value; renderLedger(); });
+document.getElementById('filterStatus').addEventListener('change', e => { STATE.currentFilters.status = e.target.value; renderLedger(); });
+
+// Sort
+document.querySelectorAll('#ledgerTable thead th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    if (STATE.currentSort.key === k) {
+      STATE.currentSort.dir = STATE.currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      STATE.currentSort.key = k;
+      STATE.currentSort.dir = (['amount','openBalance','date','dueDate','collections','reminders'].includes(k)) ? 'desc' : 'asc';
+    }
+    renderLedger();
+  });
+});
+
+// Notes / collections cell actions (event delegation)
+document.body.addEventListener('click', e => {
+  const editBtn = e.target.closest('[data-edit-num]');
+  if (editBtn) { openInvoiceEditor(editBtn.dataset.editNum); return; }
+  const collBtn = e.target.closest('[data-mark-collections]');
+  if (collBtn) {
+    if (confirm('Mark invoice ' + collBtn.dataset.markCollections + ' as sent to collections today?')) {
+      quickMarkCollections(collBtn.dataset.markCollections);
+    }
+    return;
+  }
+  const reprintBtn = e.target.closest('[data-reprint-client]');
+  if (reprintBtn) {
+    generateDemandLetter(reprintBtn.dataset.reprintClient);
+    return;
+  }
+});
+
+// Modal
+document.getElementById('invCollChk').addEventListener('change', e => {
+  const show = e.target.checked;
+  document.getElementById('collDateField').style.display = show ? 'block' : 'none';
+  if (show && !document.getElementById('invCollDate').value) {
+    document.getElementById('invCollDate').value = new Date().toISOString().slice(0,10);
+  }
+});
+document.getElementById('invCancel').addEventListener('click', closeInvoiceEditor);
+document.getElementById('invSave').addEventListener('click', saveInvoiceEdits);
+document.getElementById('invGenerateDemand').addEventListener('click', async () => {
+  if (!STATE.editingNum) return;
+  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
+  if (!inv) return;
+  // First save any pending edits, then generate the letter
+  await saveInvoiceEditsQuiet();
+  generateDemandLetter(inv.name);
+  // Reopen the modal to show updated status
+  setTimeout(() => openInvoiceEditor(inv.num), 250);
+});
+document.getElementById('invClearDemand').addEventListener('click', async () => {
+  if (!STATE.editingNum) return;
+  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
+  if (!inv) return;
+  const clientInvs = getClientInvoices(inv.name);
+  if (!confirm(`Clear demand letter status for all ${clientInvs.length} of ${escapeHtml(inv.name)}'s invoices?`)) return;
+  // Snapshot every invoice we are about to modify
+  const snapshots = new Map();
+  STATE.invoices.forEach(r => {
+    if (r.name === inv.name && r.demandLetterSent) {
+      snapshots.set(r.num, {
+        notes:            r.notes || '',
+        salesRep:         r.salesRep || '',
+        inCollections:    !!r.inCollections,
+        collectionsDate:  r.collectionsDate || '',
+        demandLetterSent: !!r.demandLetterSent,
+        demandLetterDate: r.demandLetterDate || ''
+      });
+      r.demandLetterSent = false;
+      r.demandLetterDate = '';
+      r.lastUpdated = nowISO();
+    }
+  });
+  let saved = 0, cancelled = 0;
+  for (const [num, snap] of snapshots.entries()) {
+    const ok = await saveSingleInvoice(num, snap);
+    if (ok) saved++;
+    else {
+      const rev = STATE.invoices.find(r => r.num === num);
+      if (rev) Object.assign(rev, snap);
+      cancelled++;
+    }
+  }
+  renderAll();
+  openInvoiceEditor(inv.num); // refresh modal
+  if (cancelled === 0) {
+    showStatus(`Cleared demand letter status on ${saved} invoice${saved===1?'':'s'}`, 'success');
+  } else {
+    showStatus(`Cleared ${saved}, ${cancelled} cancelled due to stale data`, 'success');
+  }
+});
+document.getElementById('invModal').addEventListener('click', e => {
+  if (e.target.id === 'invModal') closeInvoiceEditor();
+});
+
+// Pivot jumps
+document.getElementById('pivotByClient').addEventListener('click', e => {
+  const row = e.target.closest('[data-jump-client]');
+  if (!row) return;
+  STATE.currentFilters.text = row.dataset.jumpClient;
+  document.getElementById('filterText').value = row.dataset.jumpClient;
+  document.querySelector('.tab-btn[data-tab="ledger"]').click();
+  renderLedger();
+});
+document.getElementById('pivotBySalesRep').addEventListener('click', e => {
+  const row = e.target.closest('[data-jump-rep]');
+  if (!row) return;
+  STATE.currentFilters.rep = row.dataset.jumpRep;
+  document.getElementById('filterRep').value = row.dataset.jumpRep;
+  document.querySelector('.tab-btn[data-tab="ledger"]').click();
+  renderLedger();
+});
+
+// Aging drilldown
+document.getElementById('agingMatrix').addEventListener('click', e => {
+  const cell = e.target.closest('[data-drill-year]');
+  if (!cell) return;
+  const y = cell.dataset.drillYear;
+  const m = cell.dataset.drillMonth;
+  if (y && m !== undefined) {
+    STATE.currentFilters.year = y;
+    document.getElementById('filterYear').value = y;
+    const key = `${y}-${String(parseInt(m,10)+1).padStart(2,'0')}`;
+    document.querySelector('.tab-btn[data-tab="monthly"]').click();
+    renderLedger();
+    setTimeout(() => {
+      const row = document.querySelector(`[data-month-key="${key}"]`);
+      if (row) { row.classList.add('open'); row.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }, 100);
+  } else if (y) {
+    STATE.currentFilters.year = y;
+    document.getElementById('filterYear').value = y;
+    document.querySelector('.tab-btn[data-tab="ledger"]').click();
+    renderLedger();
+  }
+});
+
+// Monthly row toggle
+document.getElementById('monthList').addEventListener('click', e => {
+  const header = e.target.closest('.month-row-header');
+  if (!header) return;
+  header.parentElement.classList.toggle('open');
+});
+
+// Exports
+document.getElementById('exportLedgerCSV').addEventListener('click', exportLedgerCSV);
+document.getElementById('exportLedgerXLSX').addEventListener('click', exportLedgerXLSX);
+
+// Backup / restore / clear
+document.getElementById('backupJSON').addEventListener('click', () => {
+  const dump = {
+    exportedAt: nowISO(),
+    invoices: STATE.invoices,
+    history: STATE.history,
+    archived: STATE.archived,
+    contacts: STATE.contacts,
+    meta: STATE.meta
+  };
+  downloadFile(JSON.stringify(dump, null, 2), 'overdue_backup_' + dateStamp() + '.json', 'application/json');
+});
+document.getElementById('restoreJSON').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (!confirm('Restore from backup will REPLACE all current shared data. Continue?')) {
+    e.target.value = '';
+    return;
+  }
+  try {
+    const txt = await f.text();
+    const dump = JSON.parse(txt);
+    STATE.invoices = dump.invoices || [];
+    STATE.history  = dump.history || [];
+    STATE.archived = dump.archived || dump.archivedNotes || {};
+    STATE.contacts = dump.contacts || {};
+    STATE.meta     = dump.meta || {};
+    await saveState();
+    renderAll();
+    showStatus('Backup restored — ' + STATE.invoices.length + ' invoices loaded', 'success');
+  } catch (err) {
+    showStatus('Restore failed: ' + err.message, 'error');
+  }
+  e.target.value = '';
+});
+document.getElementById('clearAll').addEventListener('click', async () => {
+  if (!confirm('Permanently delete ALL shared invoice data, notes, collections status, and history? This cannot be undone.')) return;
+  if (!confirm('Are you ABSOLUTELY sure? Everyone using this dashboard will lose their data.')) return;
+  STATE.invoices = []; STATE.history = []; STATE.archived = {}; STATE.contacts = {}; STATE.meta = {};
+  await saveState();
+  renderAll();
+  showStatus('All data cleared', 'success');
+});
+
+
+// =====================================================================
+// EMBEDDED INITIAL DATA (one-time bootstrap from existing spreadsheet)
+// =====================================================================
+const EMBEDDED_INITIAL_BACKUP = {"invoices":[],"history":[],"archived":{},"contacts":{},"meta":{}};
+
+async function loadEmbeddedInitialData() {
+  if (!GOOGLE_AUTH.accessToken) {
+    showStatus('Sign in to Google first', 'error');
+    return;
+  }
+  if (!GOOGLE_CONFIG.SHEET_ID) {
+    showStatus('No Google Sheet configured yet', 'error');
+    return;
+  }
+  if (STATE.invoices.length > 0) {
+    if (!confirm('The Google Sheet already has data. Loading the initial backup will REPLACE everything in the sheet. Continue?')) return;
+  } else {
+    if (!confirm('Push the initial 280 invoices (with notes, collections, sales reps, and contacts) to the Google Sheet?')) return;
+  }
+  STATE.invoices = EMBEDDED_INITIAL_BACKUP.invoices || [];
+  STATE.history  = EMBEDDED_INITIAL_BACKUP.history || [];
+  STATE.archived = EMBEDDED_INITIAL_BACKUP.archived || {};
+  STATE.contacts = EMBEDDED_INITIAL_BACKUP.contacts || {};
+  STATE.meta     = EMBEDDED_INITIAL_BACKUP.meta || {};
+  await saveState();
+  renderAll();
+  showStatus('Initial data loaded into Google Sheet — ' + STATE.invoices.length + ' invoices', 'success');
+}
+
+function showSetupModal() {
+  document.getElementById('setupSection').style.display = 'block';
+  document.getElementById('overlaySignInPrompt').style.display = 'none';
+  document.getElementById('overlaySignInBtn').style.display = 'none';
+  document.getElementById('clientIdInput').focus();
+}
+
+function updateSheetLinkUi() {
+  const link = document.getElementById('sheetLink');
+  if (link) {
+    if (GOOGLE_CONFIG.SHEET_ID) {
+      const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_CONFIG.SHEET_ID}/edit`;
+      link.href = url;
+      link.textContent = url;
+    } else {
+      link.href = '#';
+      link.textContent = 'Not configured yet — sign in to auto-create';
+    }
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('loadInitialBtn');
+  if (btn) btn.addEventListener('click', loadEmbeddedInitialData);
+});
+// In case DOMContentLoaded already fired
+setTimeout(() => {
+  const btn = document.getElementById('loadInitialBtn');
+  if (btn && !btn._wired) { btn._wired = true; btn.addEventListener('click', loadEmbeddedInitialData); }
+}, 100);
+
+// Wire up sign-in UI
+document.getElementById('signInBtn').addEventListener('click', signIn);
+document.getElementById('signOutBtn').addEventListener('click', signOut);
+document.getElementById('overlaySignInBtn').addEventListener('click', signIn);
+document.getElementById('refreshBtn').addEventListener('click', refreshFromSheet);
+document.getElementById('saveClientId').addEventListener('click', () => {
+  const v = document.getElementById('clientIdInput').value.trim();
+  if (!v) { showStatus('Paste a Client ID first', 'error'); return; }
+  if (!v.includes('.apps.googleusercontent.com')) {
+    if (!confirm('That does not look like a Google OAuth Client ID. Save anyway?')) return;
+  }
+  GOOGLE_CONFIG.CLIENT_ID = v;
+  localStorage.setItem('mts_client_id', v);
+  document.getElementById('setupSection').style.display = 'none';
+  document.getElementById('overlaySignInPrompt').style.display = 'block';
+  document.getElementById('overlaySignInBtn').style.display = 'inline-block';
+  showStatus('Client ID saved. Click "Sign in with Google" to continue.', 'success');
+});
+document.getElementById('openSetupGuide').addEventListener('click', () => {
+  window.open('https://console.cloud.google.com/', '_blank');
+});
+document.getElementById('overlaySetupLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  showSetupModal();
+});
+document.getElementById('openSheetBtn').addEventListener('click', () => {
+  if (GOOGLE_CONFIG.SHEET_ID) {
+    window.open(`https://docs.google.com/spreadsheets/d/${GOOGLE_CONFIG.SHEET_ID}/edit`, '_blank');
+  } else {
+    showStatus('No sheet configured yet', 'error');
+  }
+});
+document.getElementById('reconfigureBtn').addEventListener('click', () => {
+  const cur = GOOGLE_CONFIG.CLIENT_ID;
+  const v = prompt('Paste your OAuth Client ID:', cur || '');
+  if (v === null) return;
+  if (!v.trim()) return;
+  GOOGLE_CONFIG.CLIENT_ID = v.trim();
+  localStorage.setItem('mts_client_id', v.trim());
+  showStatus('Client ID updated. Sign out and back in to take effect.', 'success');
+});
+document.getElementById('changeSheetBtn').addEventListener('click', () => {
+  const v = prompt('Paste the Google Sheet ID (the long string from the sheet URL between /d/ and /edit). Leave blank to clear and auto-create a new sheet.', GOOGLE_CONFIG.SHEET_ID || '');
+  if (v === null) return;
+  GOOGLE_CONFIG.SHEET_ID = v.trim();
+  if (v.trim()) {
+    localStorage.setItem('mts_sheet_id', v.trim());
+  } else {
+    localStorage.removeItem('mts_sheet_id');
+  }
+  showStatus('Sheet changed. Sign out and back in to load the new sheet.', 'success');
+  updateSheetLinkUi();
+});
+
+// Update sheet link periodically
+setInterval(updateSheetLinkUi, 2000);
+updateSheetLinkUi();
+
+// Initial UI state
+updateAuthUi();
+
+// If we have a client ID and no sign-in yet, the overlay is showing the sign in button.
+// If we don't have a client ID, prompt setup.
+if (!GOOGLE_CONFIG.CLIENT_ID) {
+  showSetupModal();
+}
+
+// Initial render with empty state
+renderAll();
+</script>
+
+</body>
+</html>
