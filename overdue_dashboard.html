@@ -3274,7 +3274,23 @@ document.getElementById('invCollChk').addEventListener('change', e => {
 });
 document.getElementById('invCancel').addEventListener('click', closeInvoiceEditor);
 document.getElementById('invSave').addEventListener('click', saveInvoiceEdits);
+document.getElementById('invLogContact').addEventListener('click', () => {
+  if (STATE.editingNum) openLogContactModal(STATE.editingNum, null);
+});
 
+// Log Contact modal wiring
+document.getElementById('logContactCancel').addEventListener('click', closeLogContactModal);
+document.getElementById('logContactSave').addEventListener('click', saveContactLog);
+document.getElementById('logContactModal').addEventListener('click', e => {
+  if (e.target.id === 'logContactModal') closeLogContactModal();
+});
+document.querySelectorAll('[data-log-method-tile]').forEach(tile => {
+  tile.addEventListener('click', () => {
+    document.querySelectorAll('[data-log-method-tile]').forEach(t => t.classList.remove('active'));
+    tile.classList.add('active');
+    logContactState.method = tile.dataset.logMethodTile;
+  });
+});
 
 document.getElementById('invModal').addEventListener('click', e => {
   if (e.target.id === 'invModal') closeInvoiceEditor();
