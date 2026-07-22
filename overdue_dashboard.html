@@ -608,21 +608,106 @@
     border-color: var(--bark-deep);
   }
 
-  /* Mobile touch improvements */
+  /* -------- Tablet / iPad (720px - 1023px) -------- */
+  @media (max-width: 1023px) and (min-width: 721px) {
+    header.masthead { padding: 20px 24px 16px; }
+    .masthead-title { font-size: 32px; }
+    nav.tabs { padding: 0 20px; }
+    .tab-btn { padding: 12px 16px 10px; font-size: 11px; }
+    main { padding: 24px 24px 60px; }
+    .metrics-row { grid-template-columns: repeat(2, 1fr); }
+    .pivot-grid { grid-template-columns: 1fr; }
+    .upload-grid { grid-template-columns: 1fr 1fr !important; }
+    .contact-actions a { width: 32px; height: 32px; }
+    /* Larger tap targets */
+    .chip { padding: 6px 12px; font-size: 12px; }
+    .sender-tile { min-width: 120px; min-height: 56px; font-size: 14px; }
+    /* Table can be a bit tighter but still readable */
+    tbody td { padding: 8px 10px; font-size: 12px; }
+    thead th { padding: 8px 10px; font-size: 10px; }
+  }
+
+  /* -------- Phone (<= 720px) -------- */
   @media (max-width: 720px) {
-    header.masthead { padding: 14px 16px; }
-    .masthead-grid { grid-template-columns: 1fr; gap: 10px; }
-    .masthead-left, .masthead-right { text-align: center; }
-    .masthead-title { font-size: 26px; }
-    nav.tabs { padding: 0 8px; overflow-x: auto; }
-    .tab-btn { padding: 12px 12px 10px; font-size: 11px; letter-spacing: 0.08em; }
-    main { padding: 16px 12px 60px; }
-    .filter-bar { gap: 6px; }
-    .filter-bar input[type="text"], .filter-bar select { min-width: 120px; font-size: 15px; }
-    .metrics-row { grid-template-columns: 1fr 1fr; }
-    .modal { padding: 16px; }
-    .contact-actions a { width: 36px; height: 36px; font-size: 16px; }
-    .chip { padding: 8px 14px; font-size: 12px; }
+    header.masthead { padding: 12px 12px 10px; position: static; }
+    .masthead-grid { grid-template-columns: 1fr; gap: 8px; text-align: center; }
+    .masthead-left, .masthead-right { text-align: center; font-size: 10px; }
+    .masthead-right { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .masthead-right > div:first-child { margin-bottom: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+    .masthead-title { font-size: 22px; }
+    .masthead-title .sub { font-size: 11px; }
+    .masthead-right .total { font-size: 18px; }
+    nav.tabs { padding: 0 4px; overflow-x: auto; position: static; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .tab-btn { padding: 10px 10px 8px; font-size: 10px; letter-spacing: 0.06em; flex-shrink: 0; }
+    .tab-btn .badge { font-size: 9px; padding: 1px 5px; margin-left: 4px; }
+    main { padding: 12px 8px 60px; }
+
+    .section-header { flex-wrap: wrap; gap: 6px; }
+    .section-title { font-size: 18px; }
+    .section-meta { font-size: 10px; }
+
+    .filter-bar { gap: 6px; flex-wrap: wrap; }
+    .filter-bar .filter-label { font-size: 9px; letter-spacing: 0.08em; }
+    .filter-bar input[type="text"], .filter-bar select {
+      min-width: 0; width: 100%; font-size: 16px; padding: 10px 12px;
+    }
+    .actions-right { margin-left: 0; width: 100%; justify-content: flex-end; }
+
+    .metrics-row { grid-template-columns: 1fr; gap: 8px; }
+    .metric { padding: 12px 14px; }
+    .metric .value { font-size: 22px; }
+
+    .pivot-grid { grid-template-columns: 1fr; gap: 12px; }
+    .upload-grid { grid-template-columns: 1fr !important; gap: 12px; }
+    .upload-card { padding: 18px; }
+
+    /* Tables on phone: allow horizontal scroll, cards would be too different */
+    .table-wrap { max-height: none; }
+    table { font-size: 11px; min-width: 700px; }
+    thead th { padding: 6px 8px; font-size: 9px; }
+    tbody td { padding: 6px 8px; }
+    .notes-cell { min-width: 180px; max-width: 240px; }
+    .notes-text { font-size: 11px; }
+
+    /* Bigger tap targets for call/text/edit */
+    .contact-actions a { width: 40px; height: 40px; font-size: 18px; }
+    .contact-actions { gap: 6px; margin-left: 4px; }
+    .notes-edit-btn { padding: 6px 10px; font-size: 11px; }
+    .collections-toggle { padding: 8px 10px; font-size: 11px; }
+
+    /* Chip filters take more space on phone */
+    .chip { padding: 8px 14px; font-size: 12px; min-height: 34px; display: inline-flex; align-items: center; }
+    .chip-group { gap: 6px; }
+
+    /* Sender tiles must be big and thumb-friendly */
+    .sender-tile { min-width: 100px; min-height: 64px; padding: 14px 16px; font-size: 15px; flex: 1 1 40%; }
+
+    /* Modals full-height and touch-friendly */
+    .modal-backdrop { padding: 8px; align-items: flex-start; }
+    .modal { padding: 16px; max-height: 96vh; }
+    .modal h3 { font-size: 18px; }
+    .modal .modal-sub { font-size: 12px; }
+    .modal textarea, .modal input[type="date"], .modal input[type="text"] { font-size: 16px; padding: 12px; }
+    .modal-actions { flex-wrap: wrap; }
+    .modal-actions .btn { flex: 1; min-width: 100px; padding: 12px; }
+
+    /* Aging matrix — kept horizontal scroll */
+    .aging-grid { grid-template-columns: 50px repeat(12, minmax(60px, 1fr)) 70px; font-size: 10px; }
+    .aging-grid .cell { padding: 6px 4px; }
+
+    /* Monthly report */
+    .month-row-header { grid-template-columns: 20px 1fr auto; gap: 8px; padding: 10px 12px; }
+    .month-row-header .ct { display: none; }
+    .month-row-header .label { font-size: 14px; }
+    .month-row-header .amt { font-size: 15px; }
+
+    /* Sender banner */
+    #senderBanner { padding: 8px 10px; font-size: 12px; }
+    #senderBanner .filter-label { font-size: 10px; }
+
+    /* Buttons */
+    .btn { padding: 12px 20px; font-size: 12px; }
+    .btn.small { padding: 8px 14px; font-size: 11px; }
   }
 
   /* spinner */
@@ -2970,35 +3055,62 @@ function cleanPhone(v) {
 }
 
 // Build the call/text action HTML for a ledger row
+// Behavior:
+//   Call:  one 📞 button per unique number on file (0, 1, or 2 buttons)
+//   Text:  one 💬 button total. If both a mobile and a landline exist and are different,
+//          text address includes both (group text). If only one number, single-recipient text.
 function contactActionsHtml(inv) {
   const c = STATE.contacts[inv.num];
   const mobile = c ? cleanPhone(c.clientMobile) : '';
   const phone  = c ? cleanPhone(c.clientPhone)  : '';
   const hasSender = !!STATE.currentSender;
   const firstName = c && c.clientFirst ? c.clientFirst : '';
-  // If no sender picked, texting is disabled with a helpful title
+
   const smsTemplate = firstName
     ? `Hi there ${firstName}, this is ${STATE.currentSender || '[your name]'} from Monster Tree Service. You have an overdue invoice that we have sent to your email. Please check your email and call with any questions.`
     : `Hi, this is ${STATE.currentSender || '[your name]'} from Monster Tree Service. You have an overdue invoice that we have sent to your email. Please check your email and call with any questions.`;
 
   const parts = [];
-  if (phone || mobile) {
-    // Prefer landline for call, fallback to mobile
-    const callNum = phone || mobile;
-    parts.push(`<a href="tel:${escapeAttr(callNum)}" title="Call ${callNum}" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Call">📞</a>`);
-  } else {
+
+  // ----- Call buttons: one per unique number -----
+  const callNums = [];
+  if (mobile) callNums.push({ num: mobile, label: 'Mobile', raw: c.clientMobile });
+  if (phone && phone !== mobile) callNums.push({ num: phone, label: 'Phone', raw: c.clientPhone });
+
+  if (callNums.length === 0) {
     parts.push(`<a class="disabled" title="No phone on file">📞</a>`);
-  }
-  if (mobile) {
-    if (hasSender) {
-      const smsUri = `sms:${cleanPhone(mobile)}?&body=${encodeURIComponent(smsTemplate)}`;
-      parts.push(`<a href="${smsUri}" title="Text ${mobile}" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Text">💬</a>`);
-    } else {
-      parts.push(`<a class="disabled" title="Pick your name on Data & Upload → Sender before texting">💬</a>`);
-    }
+  } else if (callNums.length === 1) {
+    const n = callNums[0];
+    parts.push(`<a href="tel:${escapeAttr(n.num)}" title="Call ${escapeAttr(n.raw)} (${n.label})" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Call">📞</a>`);
   } else {
-    parts.push(`<a class="disabled" title="No mobile number on file">💬</a>`);
+    // Two distinct numbers — show one button per, with letter M/P to differentiate
+    callNums.forEach(n => {
+      const letter = n.label === 'Mobile' ? 'M' : 'P';
+      parts.push(`<a href="tel:${escapeAttr(n.num)}" title="Call ${escapeAttr(n.raw)} (${n.label})" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Call"><span style="position:relative; display:inline-block;">📞<span style="position:absolute; bottom:-3px; right:-4px; background:var(--ink); color:var(--paper); font-size:8px; font-weight:700; padding:1px 3px; border-radius:6px; font-family:'Inter Tight',sans-serif; letter-spacing:0;">${letter}</span></span></a>`);
+    });
   }
+
+  // ----- Text button: single button; multi-recipient if two distinct numbers -----
+  const smsNums = [];
+  if (mobile) smsNums.push(mobile);
+  if (phone && phone !== mobile) smsNums.push(phone);
+
+  if (smsNums.length === 0) {
+    parts.push(`<a class="disabled" title="No phone on file">💬</a>`);
+  } else if (!hasSender) {
+    parts.push(`<a class="disabled" title="Pick your name at the top of the page before texting">💬</a>`);
+  } else {
+    // Cross-platform group SMS: iOS accepts comma-separated recipients in the sms: scheme,
+    // Android uses semicolons. Use comma (widest support in modern iOS 15+ and Android 12+).
+    // For older Android compatibility, comma also works in most cases.
+    const recipients = smsNums.join(',');
+    const smsUri = `sms:${recipients}?&body=${encodeURIComponent(smsTemplate)}`;
+    const tipText = smsNums.length === 2
+      ? `Text both numbers (${c.clientMobile} + ${c.clientPhone})`
+      : `Text ${smsNums[0]}`;
+    parts.push(`<a href="${smsUri}" title="${escapeAttr(tipText)}" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Text">💬${smsNums.length === 2 ? '<span style="font-size:9px; font-weight:700; vertical-align:super; letter-spacing:0;">2</span>' : ''}</a>`);
+  }
+
   return `<span class="contact-actions">${parts.join('')}</span>`;
 }
 
