@@ -497,6 +497,134 @@
   .history-item .delta .removed { color: var(--rust); }
   .history-item .delta .updated { color: var(--amber); }
 
+  /* Filter chips (multi-select) */
+  .chip-group { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+  .chip {
+    display: inline-block;
+    padding: 4px 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    border-radius: 12px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s ease;
+    font-family: 'Inter Tight', sans-serif;
+  }
+  .chip:hover { border-color: var(--bark); color: var(--ink); }
+  .chip.active {
+    background: var(--bark-deep);
+    color: var(--paper);
+    border-color: var(--bark-deep);
+    font-weight: 600;
+  }
+  .chip.active:hover { background: var(--bark); }
+
+  /* Click-to-call/text action buttons in ledger */
+  .contact-actions { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
+  .contact-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    text-decoration: none;
+    background: var(--paper-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    transition: all 0.12s ease;
+    font-size: 14px;
+  }
+  .contact-actions a:hover { background: var(--bark); color: var(--paper); border-color: var(--bark); }
+  .contact-actions a.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+    cursor: not-allowed;
+  }
+
+  /* Sender tiles */
+  .sender-tiles { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+  .sender-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    min-height: 60px;
+    padding: 14px 20px;
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.12s ease;
+    text-align: center;
+  }
+  .sender-tile:hover { border-color: var(--bark); }
+  .sender-tile.active {
+    background: var(--bark-deep);
+    color: var(--paper);
+    border-color: var(--bark-deep);
+  }
+  .sender-tile.editable {
+    position: relative;
+  }
+  .sender-tile.editable .del-btn {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 20px; height: 20px;
+    border-radius: 10px;
+    background: var(--rust);
+    color: var(--paper);
+    border: none;
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+  }
+  .sender-tile.editable:hover .del-btn { display: block; }
+
+  /* Log contact modal */
+  .log-method-tiles { display: flex; gap: 8px; margin-bottom: 12px; }
+  .log-method-tile {
+    flex: 1;
+    padding: 12px;
+    background: var(--paper);
+    border: 2px solid var(--line);
+    border-radius: 4px;
+    text-align: center;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+    transition: all 0.12s ease;
+  }
+  .log-method-tile:hover { border-color: var(--bark); }
+  .log-method-tile.active {
+    background: var(--bark-deep);
+    color: var(--paper);
+    border-color: var(--bark-deep);
+  }
+
+  /* Mobile touch improvements */
+  @media (max-width: 720px) {
+    header.masthead { padding: 14px 16px; }
+    .masthead-grid { grid-template-columns: 1fr; gap: 10px; }
+    .masthead-left, .masthead-right { text-align: center; }
+    .masthead-title { font-size: 26px; }
+    nav.tabs { padding: 0 8px; overflow-x: auto; }
+    .tab-btn { padding: 12px 12px 10px; font-size: 11px; letter-spacing: 0.08em; }
+    main { padding: 16px 12px 60px; }
+    .filter-bar { gap: 6px; }
+    .filter-bar input[type="text"], .filter-bar select { min-width: 120px; font-size: 15px; }
+    .metrics-row { grid-template-columns: 1fr 1fr; }
+    .modal { padding: 16px; }
+    .contact-actions a { width: 36px; height: 36px; font-size: 16px; }
+    .chip { padding: 8px 14px; font-size: 12px; }
+  }
+
   /* spinner */
   .spinner {
     width: 16px; height: 16px;
@@ -542,11 +670,15 @@
   <button class="tab-btn" data-tab="aging">Aging Matrix</button>
   <button class="tab-btn" data-tab="monthly">Monthly Report</button>
   <button class="tab-btn" data-tab="collections">Collections <span class="badge" id="collectionsCount">0</span></button>
-  <button class="tab-btn" data-tab="demand">Demand Letters <span class="badge" id="demandCount">0</span></button>
   <button class="tab-btn" data-tab="manage">Data &amp; Upload</button>
 </nav>
 
 <main>
+
+  <div id="senderBanner" style="display:none; margin-bottom: 16px; padding: 10px 14px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 4px; font-size: 13px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+    <span style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-soft); font-weight: 600;">Texting as:</span>
+    <div id="senderQuickPick" style="display: inline-flex; flex-wrap: wrap; gap: 6px;"></div>
+  </div>
 
   <!-- ============ LEDGER TAB ============ -->
   <section class="panel active" data-panel="ledger">
@@ -555,20 +687,23 @@
       <input type="text" id="filterText" placeholder="Client, invoice, notes, sales rep…" />
       <span class="filter-label">Sales Rep</span>
       <select id="filterRep"><option value="">All</option></select>
-      <span class="filter-label">Year</span>
-      <select id="filterYear"><option value="">All</option></select>
       <span class="filter-label">Status</span>
       <select id="filterStatus">
         <option value="">All</option>
         <option value="collections">In Collections</option>
         <option value="not-collections">Not in Collections</option>
-        <option value="demand-sent">Demand Letter Sent</option>
-        <option value="demand-not-sent">No Demand Letter</option>
       </select>
       <div class="actions-right">
         <button class="btn small secondary" id="exportLedgerCSV">Export CSV</button>
         <button class="btn small secondary" id="exportLedgerXLSX">Export XLSX</button>
       </div>
+    </div>
+    <div class="filter-bar" style="padding-top: 4px;">
+      <span class="filter-label">Years</span>
+      <div id="filterYearChips" class="chip-group"></div>
+      <span class="filter-label" style="margin-left: 8px;">Months</span>
+      <div id="filterMonthChips" class="chip-group"></div>
+      <button class="btn small secondary" id="clearFilters" style="margin-left: 8px;">Clear Filters</button>
     </div>
     <div class="table-wrap">
       <table id="ledgerTable">
@@ -663,37 +798,21 @@
     </div>
   </section>
 
-  <!-- ============ DEMAND LETTERS TAB ============ -->
-  <section class="panel" data-panel="demand">
-    <div class="section-header">
-      <h2 class="section-title">Demand Letters Sent</h2>
-      <span class="section-meta" id="demandMeta">0 invoices · $0.00 total</span>
-    </div>
-    <div class="table-wrap">
-      <table id="demandTable">
-        <thead>
-          <tr>
-            <th>Date Sent</th>
-            <th>Client</th>
-            <th>Invoice #</th>
-            <th>Inv. Date</th>
-            <th>Open Bal.</th>
-            <th>Sales Rep</th>
-            <th>Days Since</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="demandBody"></tbody>
-      </table>
-      <div id="demandEmpty" class="empty-state" style="display:none">
-        <h2>No demand letters sent yet</h2>
-        <p>From any invoice in the Ledger, click the row to open the editor, then click "Generate &amp; Print Demand Letter." The system tracks who got a letter and when.</p>
-      </div>
-    </div>
-  </section>
-
   <!-- ============ MANAGE TAB ============ -->
   <section class="panel" data-panel="manage">
+    <div class="section-header">
+      <h2 class="section-title">Text Sender Names</h2>
+      <span class="section-meta">Names available to use in click-to-text messages</span>
+    </div>
+    <div style="background: rgba(90,122,58,0.08); border: 1px solid var(--leaf); padding: 16px 20px; margin-bottom: 32px; border-radius: 2px; font-size: 13px; line-height: 1.6;">
+      <p style="margin-bottom: 10px;">Anyone using the click-to-text feature must pick their name first. Add or remove names for the office below. Names are shared across everyone using this dashboard.</p>
+      <div id="senderManagementTiles" class="sender-tiles"></div>
+      <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center;">
+        <input type="text" id="newSenderName" placeholder="Add name (e.g. Jay)" style="flex: 1; max-width: 240px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 2px; font-size: 14px;">
+        <button class="btn small" id="addSenderBtn">Add</button>
+      </div>
+    </div>
+
     <div class="section-header">
       <h2 class="section-title">Google Sheet Backend</h2>
       <span class="section-meta">Shared storage for the whole office</span>
@@ -817,20 +936,19 @@
       <input type="date" id="invCollDate" />
     </label>
 
+    <div id="invContactSection" style="background: rgba(45,80,22,0.06); border: 1px solid rgba(45,80,22,0.25); border-radius: 2px; padding: 12px 14px; margin-bottom: 14px;">
+      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600;">Contact Log</div>
+      <div id="invContactInfo" style="font-size: 12px; margin-bottom: 10px; color: var(--ink-soft);"></div>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button class="btn small" id="invLogContact">Log Contact Attempt</button>
+        <span id="invContactActionsInline"></span>
+      </div>
+    </div>
+
     <label class="field">
       <span class="lbl">Notes</span>
       <textarea id="invNotes" placeholder="Add collection notes, contact attempts, status updates…"></textarea>
     </label>
-
-    <div id="invDemandSection" style="background: rgba(154, 58, 20, 0.06); border: 1px solid rgba(154, 58, 20, 0.2); border-radius: 2px; padding: 14px 16px; margin-bottom: 14px;">
-      <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-soft); margin-bottom: 8px; font-weight: 600;">NYS Demand Letter</div>
-      <div id="invDemandStatus" style="font-size: 13px; margin-bottom: 10px;"></div>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="btn small rust" id="invGenerateDemand">Generate &amp; Print Demand Letter</button>
-        <button class="btn small secondary" id="invClearDemand" style="display:none">Clear Demand Letter Status</button>
-      </div>
-      <div id="invDemandNote" style="font-size: 11px; color: var(--ink-soft); margin-top: 8px; font-style: italic;"></div>
-    </div>
 
     <div class="modal-actions">
       <span class="left footnote" id="invMeta"></span>
@@ -864,6 +982,30 @@
   </div>
 </div>
 
+<!-- Log Contact modal -->
+<div class="modal-backdrop" id="logContactModal">
+  <div class="modal">
+    <h3 id="logContactTitle">Log Contact Attempt</h3>
+    <div class="modal-sub" id="logContactSub"></div>
+    <label class="field">
+      <span class="lbl">Method</span>
+      <div class="log-method-tiles">
+        <div class="log-method-tile" data-log-method-tile="Call">📞 Call</div>
+        <div class="log-method-tile" data-log-method-tile="Text">💬 Text</div>
+        <div class="log-method-tile" data-log-method-tile="Voicemail">📼 Voicemail</div>
+      </div>
+    </label>
+    <label class="field">
+      <span class="lbl">Outcome / Notes (optional)</span>
+      <textarea id="logContactNotes" placeholder="e.g. Client said check is coming Friday" style="min-height: 80px;"></textarea>
+    </label>
+    <div class="modal-actions">
+      <button class="btn secondary" id="logContactCancel">Cancel</button>
+      <button class="btn" id="logContactSave">Add to Notes</button>
+    </div>
+  </div>
+</div>
+
 <div class="status-bar" id="statusBar"></div>
 
 <script>
@@ -884,7 +1026,8 @@ const GOOGLE_CONFIG = {
   SCOPES:        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
   TABS: {
     INVOICES:  { name: 'Invoices',  headers: ['num','date','transactionType','name','memo','dueDate','amount','openBalance','salesRep','notes','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent','firstSeen','lastUpdated'] },
-    CONTACTS:  { name: 'Contacts',  headers: ['customer','fullName','phones','emails','billStreet','billCity','billZip','shipStreet','shipCity','shipZip'] },
+    CONTACTS:  { name: 'Contacts',  headers: ['invoiceNum','clientLast','clientFirst','clientMobile','clientPhone'] },
+    SENDERS:   { name: 'Senders',   headers: ['name'] },
     HISTORY:   { name: 'History',   headers: ['when','type','filename','added','updated','removed','notesPreserved','collectionsPreserved','mappedCount','total','totalAfter','invoiceCount'] },
     ARCHIVED:  { name: 'Archived',  headers: ['num','notes','salesRep','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent'] },
     META:      { name: 'Meta',      headers: ['key','value'] }
@@ -896,10 +1039,12 @@ let STATE = {
   invoices: [],
   history: [],
   archived: {},
-  contacts: {},
+  contacts: {},         // { invoiceNum: { clientLast, clientFirst, clientMobile, clientPhone } }
+  senders: [],          // list of sender names for text templates
   meta: {},
   currentSort: { key: 'date', dir: 'desc' },
-  currentFilters: { text: '', rep: '', year: '', status: '' },
+  currentFilters: { text: '', rep: '', years: [], months: [], status: '' },
+  currentSender: localStorage.getItem('mts_current_sender') || '',
   editingNum: null,
   editingSnapshot: null  // snapshot of invoice when modal opened, for stale-data detection
 };
@@ -1152,6 +1297,13 @@ async function readTab(tabConfig) {
   });
 }
 
+// Save just the Senders tab (much faster than a full saveState when only editing the sender list)
+async function saveSendersOnly() {
+  if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return;
+  const senderRows = (STATE.senders || []).map(name => ({ name }));
+  await writeTabFull(GOOGLE_CONFIG.TABS.SENDERS, senderRows);
+}
+
 // Read a single invoice row from the sheet by invoice number — used for stale-data checks
 async function readSingleInvoiceFromSheet(invoiceNum) {
   if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return null;
@@ -1186,9 +1338,7 @@ function diffEditableFields(a, b) {
     { key: 'notes',            label: 'Notes' },
     { key: 'salesRep',         label: 'Sales Rep' },
     { key: 'inCollections',    label: 'In Collections',     bool: true },
-    { key: 'collectionsDate',  label: 'Collections Date' },
-    { key: 'demandLetterSent', label: 'Demand Letter Sent', bool: true },
-    { key: 'demandLetterDate', label: 'Demand Letter Date' }
+    { key: 'collectionsDate',  label: 'Collections Date' }
   ];
   const diffs = [];
   for (const f of fields) {
@@ -1231,6 +1381,36 @@ async function loadState() {
   if (!GOOGLE_AUTH.accessToken || !GOOGLE_CONFIG.SHEET_ID) return;
   showStatus('Loading from Google Sheet…', 'info', true);
   try {
+    // Make sure all expected tabs exist before reading (handles upgrades that add new tabs)
+    await ensureSheetExists();
+
+    // Migration: if the Contacts tab has the OLD schema (customer/fullName/etc), reset it.
+    // The user will need to re-upload the new contact file to populate it.
+    try {
+      const headerResp = await gapi.client.sheets.spreadsheets.values.get({
+        spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+        range: `${GOOGLE_CONFIG.TABS.CONTACTS.name}!A1:E1`
+      });
+      const currentHeaders = (headerResp.result.values && headerResp.result.values[0]) || [];
+      const expectedFirst = GOOGLE_CONFIG.TABS.CONTACTS.headers[0];
+      if (currentHeaders.length > 0 && currentHeaders[0] !== expectedFirst) {
+        console.log('Detected old contacts schema — clearing tab for fresh upload');
+        // Clear the tab completely and set new headers
+        await gapi.client.sheets.spreadsheets.values.clear({
+          spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+          range: `${GOOGLE_CONFIG.TABS.CONTACTS.name}!A:Z`
+        });
+        await gapi.client.sheets.spreadsheets.values.update({
+          spreadsheetId: GOOGLE_CONFIG.SHEET_ID,
+          range: `${GOOGLE_CONFIG.TABS.CONTACTS.name}!A1`,
+          valueInputOption: 'RAW',
+          resource: { values: [GOOGLE_CONFIG.TABS.CONTACTS.headers] }
+        });
+      }
+    } catch (e) {
+      console.warn('Contact schema migration check failed (may be normal on first run):', e);
+    }
+
     const [invRows, contactRows, histRows, archRows, metaRows] = await Promise.all([
       readTab(GOOGLE_CONFIG.TABS.INVOICES),
       readTab(GOOGLE_CONFIG.TABS.CONTACTS),
@@ -1253,17 +1433,12 @@ async function loadState() {
     })).filter(r => r.num);
     STATE.contacts = {};
     contactRows.forEach(r => {
-      if (r.customer) {
-        STATE.contacts[r.customer] = {
-          fullName: r.fullName || r.customer,
-          phones: r.phones || '',
-          emails: r.emails || '',
-          billStreet: r.billStreet || '',
-          billCity: r.billCity || '',
-          billZip: String(r.billZip || ''),
-          shipStreet: r.shipStreet || '',
-          shipCity: r.shipCity || '',
-          shipZip: String(r.shipZip || '')
+      if (r.invoiceNum) {
+        STATE.contacts[String(r.invoiceNum)] = {
+          clientLast:   r.clientLast || '',
+          clientFirst:  r.clientFirst || '',
+          clientMobile: String(r.clientMobile || ''),
+          clientPhone:  String(r.clientPhone || '')
         };
       }
     });
@@ -1299,6 +1474,15 @@ async function loadState() {
     STATE.meta = {};
     metaRows.forEach(r => { if (r.key) STATE.meta[r.key] = r.value; });
 
+    // Load senders (may not exist if this is the first load of a legacy sheet)
+    try {
+      const senderRows = await readTab(GOOGLE_CONFIG.TABS.SENDERS);
+      STATE.senders = senderRows.map(r => r.name).filter(Boolean);
+    } catch (e) {
+      // Senders tab may not exist yet — will be created by ensureSheetExists next time
+      STATE.senders = [];
+    }
+
     showStatus(`Loaded · ${STATE.invoices.length} invoices · ${Object.keys(STATE.contacts).length} contacts`, 'success');
     renderAll();
   } catch (e) {
@@ -1314,15 +1498,17 @@ async function saveState() {
   }
   showStatus('Saving to Google Sheet…', 'info', true);
   try {
-    const contactRows = Object.entries(STATE.contacts).map(([customer, info]) => ({ customer, ...info }));
+    const contactRows = Object.entries(STATE.contacts).map(([invoiceNum, info]) => ({ invoiceNum, ...info }));
     const archRows = Object.entries(STATE.archived).map(([num, info]) => ({ num, ...info }));
     const metaRows = Object.entries(STATE.meta).map(([key, value]) => ({ key, value }));
+    const senderRows = (STATE.senders || []).map(name => ({ name }));
     await Promise.all([
       writeTabFull(GOOGLE_CONFIG.TABS.INVOICES, STATE.invoices),
       writeTabFull(GOOGLE_CONFIG.TABS.CONTACTS, contactRows),
       writeTabFull(GOOGLE_CONFIG.TABS.HISTORY, STATE.history),
       writeTabFull(GOOGLE_CONFIG.TABS.ARCHIVED, archRows),
-      writeTabFull(GOOGLE_CONFIG.TABS.META, metaRows)
+      writeTabFull(GOOGLE_CONFIG.TABS.META, metaRows),
+      writeTabFull(GOOGLE_CONFIG.TABS.SENDERS, senderRows)
     ]);
     showStatus('Saved to Google Sheet', 'success');
   } catch (e) {
@@ -1605,18 +1791,18 @@ function parseSalesRepWorkbook(wb) {
   return {};
 }
 
-// Parse a customer contact list. Expected headers: Customer, Phone Numbers (or Phone), Email,
-// Full Name, Billing Street (or Address), Billing City, Billing ZIP (or Zip). Tolerant to variants.
+// Parse customer contact list for click-to-call/text.
+// Expected columns: Ref # (invoice number), Client Last, Client First, Client Mobile, Client Phone
 function parseContactWorkbook(wb) {
   for (const sheetName of wb.SheetNames) {
     const sheet = wb.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
-    // Find header row: must include "customer" exactly
     let headerRowIdx = -1;
     for (let i = 0; i < Math.min(rows.length, 30); i++) {
       const row = rows[i] || [];
       const lowered = row.map(c => String(c == null ? '' : c).toLowerCase().trim());
-      if (lowered.includes('customer') && lowered.some(c => c.includes('billing') || c.includes('address') || c.includes('shipping') || c === 'zip' || c === 'street')) {
+      if (lowered.some(c => c === 'ref #' || c === 'ref#' || c === 'ref') &&
+          lowered.some(c => c.includes('mobile') || c.includes('phone'))) {
         headerRowIdx = i;
         break;
       }
@@ -1629,57 +1815,28 @@ function parseContactWorkbook(wb) {
         const idx = header.indexOf(n);
         if (idx !== -1) return idx;
       }
-      // Fuzzy: contains all words
-      for (let i = 0; i < header.length; i++) {
-        for (const n of names) {
-          const words = n.split(/\s+/);
-          if (words.every(w => header[i].includes(w))) return i;
-        }
-      }
       return -1;
     };
     const cols = {
-      customer:   findCol('customer'),
-      phones:     findCol('phone numbers', 'phones', 'phone'),
-      emails:     findCol('email', 'emails'),
-      fullName:   findCol('full name', 'name'),
-      shipCity:   findCol('shipping city', 'ship city'),
-      shipZip:    findCol('shipping zip', 'ship zip'),
-      shipStreet: findCol('shipping street', 'ship street'),
-      billCity:   findCol('billing city', 'bill city'),
-      billStreet: findCol('billing street', 'bill street', 'billing address'),
-      billZip:    findCol('billing zip', 'bill zip', 'billing zip code')
+      ref:         findCol('ref #', 'ref#', 'ref'),
+      clientLast:  findCol('client last', 'last name', 'lastname', 'last'),
+      clientFirst: findCol('client first', 'first name', 'firstname', 'first'),
+      mobile:      findCol('client mobile', 'mobile', 'cell', 'cell phone'),
+      phone:       findCol('client phone', 'phone', 'landline', 'phone number')
     };
+    if (cols.ref === -1) continue;
 
-    if (cols.customer === -1) continue;
-
-    const cleanCell = (v) => {
-      if (v === null || v === undefined) return '';
-      return String(v).replace(/_x000D_/g, '').replace(/\r/g, '').trim();
-    };
-    // Billing/shipping street may contain the customer name prepended on a separate line
-    const cleanStreet = (v) => {
-      const s = cleanCell(v);
-      if (!s) return '';
-      const lines = s.split(/\n+/).map(x => x.trim()).filter(Boolean);
-      return lines.length ? lines[lines.length - 1] : s;
-    };
-
+    const clean = (v) => v == null ? '' : String(v).trim();
     const contacts = {};
     for (let i = headerRowIdx + 1; i < rows.length; i++) {
       const row = rows[i] || [];
-      const customer = cleanCell(row[cols.customer]);
-      if (!customer) continue;
-      contacts[customer] = {
-        fullName:   cols.fullName   !== -1 ? cleanCell(row[cols.fullName]) || customer : customer,
-        phones:     cols.phones     !== -1 ? cleanCell(row[cols.phones])     : '',
-        emails:     cols.emails     !== -1 ? cleanCell(row[cols.emails])     : '',
-        billStreet: cols.billStreet !== -1 ? cleanStreet(row[cols.billStreet]) : '',
-        billCity:   cols.billCity   !== -1 ? cleanCell(row[cols.billCity])   : '',
-        billZip:    cols.billZip    !== -1 ? cleanCell(row[cols.billZip])    : '',
-        shipStreet: cols.shipStreet !== -1 ? cleanStreet(row[cols.shipStreet]) : '',
-        shipCity:   cols.shipCity   !== -1 ? cleanCell(row[cols.shipCity])   : '',
-        shipZip:    cols.shipZip    !== -1 ? cleanCell(row[cols.shipZip])    : ''
+      const num = normalizeInvoiceNum(row[cols.ref]);
+      if (!num) continue;
+      contacts[num] = {
+        clientLast:   cols.clientLast  !== -1 ? clean(row[cols.clientLast])  : '',
+        clientFirst:  cols.clientFirst !== -1 ? clean(row[cols.clientFirst]) : '',
+        clientMobile: cols.mobile      !== -1 ? clean(row[cols.mobile])      : '',
+        clientPhone:  cols.phone       !== -1 ? clean(row[cols.phone])       : ''
       };
     }
     if (Object.keys(contacts).length > 0) return contacts;
@@ -1964,33 +2121,28 @@ async function handleContactFile(file) {
       showStatus('No contact data found. Expected columns: Customer, Billing Street, Billing City, Billing ZIP.', 'error');
       return;
     }
-    // Merge: keep existing, overwrite with new where present
-    let added = 0, updated = 0;
-    Object.entries(contacts).forEach(([customer, info]) => {
-      if (STATE.contacts[customer]) {
-        // Only count as updated if address actually changed
-        const existing = STATE.contacts[customer];
-        if (existing.billStreet !== info.billStreet || existing.billCity !== info.billCity || existing.billZip !== info.billZip) {
-          updated++;
-        }
-      } else {
-        added++;
-      }
-      STATE.contacts[customer] = info;
-    });
+    // Replace all contacts entirely with the new file (source of truth by invoice #)
+    STATE.contacts = contacts;
     STATE.meta.lastContactUpload = nowISO();
     STATE.meta.lastContactFile = file.name;
     STATE.history.unshift({
       when: nowISO(), type: 'contacts', filename: file.name,
-      added, updated, total: Object.keys(STATE.contacts).length
+      total: Object.keys(STATE.contacts).length,
+      added: Object.keys(STATE.contacts).length
     });
     STATE.history = STATE.history.slice(0, 100);
     await saveState();
-    // Match against open invoices to report coverage
-    const overdueNames = new Set(STATE.invoices.map(i => i.name));
-    let coverage = 0;
-    overdueNames.forEach(n => { if (STATE.contacts[n]) coverage++; });
-    showStatus(`Contacts imported · ${added} added · ${updated} updated · ${coverage}/${overdueNames.size} open invoices have addresses`, 'success');
+    // Report coverage against open invoices
+    let mobileCount = 0, phoneCount = 0, coverage = 0;
+    STATE.invoices.forEach(inv => {
+      const c = STATE.contacts[inv.num];
+      if (c) {
+        coverage++;
+        if (c.clientMobile) mobileCount++;
+        if (c.clientPhone) phoneCount++;
+      }
+    });
+    showStatus(`Contacts imported · ${coverage}/${STATE.invoices.length} invoices matched · ${mobileCount} w/ mobile · ${phoneCount} w/ phone`, 'success');
     renderAll();
   } catch (e) {
     console.error(e);
@@ -2028,6 +2180,35 @@ async function handleEmailFile(file) {
 // RENDER
 // =====================================================================
 
+// ---- Sender management ----
+function renderSenders() {
+  // Quick-pick banner (visible only if senders exist)
+  const banner = document.getElementById('senderBanner');
+  const quickPick = document.getElementById('senderQuickPick');
+  if (!STATE.senders || STATE.senders.length === 0) {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = 'flex';
+    quickPick.innerHTML = STATE.senders.map(name => `
+      <span class="chip ${STATE.currentSender === name ? 'active' : ''}" data-pick-sender="${escapeAttr(name)}">${escapeHtml(name)}</span>
+    `).join('');
+  }
+  // Management tiles on Data & Upload
+  const tiles = document.getElementById('senderManagementTiles');
+  if (tiles) {
+    if (STATE.senders.length === 0) {
+      tiles.innerHTML = '<div style="font-style: italic; color: var(--ink-soft); font-size: 13px;">No sender names configured yet. Add one below to enable click-to-text.</div>';
+    } else {
+      tiles.innerHTML = STATE.senders.map(name => `
+        <div class="sender-tile editable" data-manage-sender="${escapeAttr(name)}">
+          ${escapeHtml(name)}
+          <button class="del-btn" data-del-sender="${escapeAttr(name)}" title="Remove ${escapeAttr(name)}">×</button>
+        </div>
+      `).join('');
+    }
+  }
+}
+
 function renderAll() {
   renderHeaderMeta();
   renderLedger();
@@ -2035,8 +2216,8 @@ function renderAll() {
   renderAging();
   renderMonthly();
   renderCollections();
-  renderDemand();
   renderManage();
+  renderSenders();
 }
 
 function renderHeaderMeta() {
@@ -2047,27 +2228,26 @@ function renderHeaderMeta() {
   document.getElementById('lastUploadDisplay').textContent = last ? 'Last upload · ' + fmtDateTime(last) : 'No data yet';
   const collCount = STATE.invoices.filter(r => r.inCollections).length;
   document.getElementById('collectionsCount').textContent = collCount;
-  const demandCount = STATE.invoices.filter(r => r.demandLetterSent).length;
-  document.getElementById('demandCount').textContent = demandCount;
 }
 
 // ---- Ledger ----
 function getFilteredSorted() {
   const t = STATE.currentFilters.text.toLowerCase().trim();
   const rep = STATE.currentFilters.rep;
-  const year = STATE.currentFilters.year;
+  const years = STATE.currentFilters.years || [];
+  const months = STATE.currentFilters.months || [];
   const status = STATE.currentFilters.status;
 
   let rows = STATE.invoices.filter(r => {
     if (rep && r.salesRep !== rep) return false;
-    if (year) {
+    if (years.length > 0 || months.length > 0) {
       const d = parseAnyDate(r.date);
-      if (!d || String(d.getFullYear()) !== String(year)) return false;
+      if (!d) return false;
+      if (years.length > 0 && !years.includes(d.getFullYear())) return false;
+      if (months.length > 0 && !months.includes(d.getMonth())) return false;
     }
     if (status === 'collections' && !r.inCollections) return false;
     if (status === 'not-collections' && r.inCollections) return false;
-    if (status === 'demand-sent' && !r.demandLetterSent) return false;
-    if (status === 'demand-not-sent' && r.demandLetterSent) return false;
     if (t) {
       const blob = [r.num, r.name, r.notes, r.salesRep, r.memo, fmtDate(r.date), fmtDate(r.dueDate)].join(' ').toLowerCase();
       if (!blob.includes(t)) return false;
@@ -2111,10 +2291,18 @@ function renderLedger() {
     const d = parseAnyDate(r.date);
     return d ? d.getFullYear() : null;
   }).filter(Boolean))].sort();
-  const yearSel = document.getElementById('filterYear');
-  const prevYear = yearSel.value;
-  yearSel.innerHTML = '<option value="">All</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-  yearSel.value = prevYear;
+  const yearChips = document.getElementById('filterYearChips');
+  yearChips.innerHTML = years.map(y => {
+    const active = STATE.currentFilters.years.includes(y);
+    return `<span class="chip ${active ? 'active' : ''}" data-year="${y}">${y}</span>`;
+  }).join('');
+
+  const monthNamesShort = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthChips = document.getElementById('filterMonthChips');
+  monthChips.innerHTML = monthNamesShort.map((m, i) => {
+    const active = STATE.currentFilters.months.includes(i);
+    return `<span class="chip ${active ? 'active' : ''}" data-month="${i}">${m}</span>`;
+  }).join('');
 
   const rows = getFilteredSorted();
 
@@ -2136,7 +2324,7 @@ function renderLedger() {
       <tr class="${r.inCollections ? 'in-collections' : ''}">
         <td>${fmtDate(r.date)}</td>
         <td class="num">${escapeHtml(r.num)}</td>
-        <td class="client">${escapeHtml(r.name)}</td>
+        <td class="client">${escapeHtml(r.name)}${contactActionsHtml(r)}</td>
         <td>${fmtDate(r.dueDate)}</td>
         <td class="num">${fmtMoney(r.amount)}</td>
         <td class="num">${fmtMoney(r.openBalance)}</td>
@@ -2352,10 +2540,10 @@ function renderMonthly() {
             </tr></thead>
             <tbody>
               ${items.map(r => `
-                <tr class="${r.inCollections ? 'in-collections' : ''}">
+                <tr class="${r.inCollections ? 'in-collections' : ''}" style="cursor: pointer;" data-edit-num="${escapeAttr(r.num)}">
                   <td>${fmtDate(r.date)}</td>
                   <td class="num">${escapeHtml(r.num)}</td>
-                  <td class="client">${escapeHtml(r.name)}</td>
+                  <td class="client">${escapeHtml(r.name)}${contactActionsHtml(r)}</td>
                   <td>${fmtDate(r.dueDate)}</td>
                   <td class="num">${fmtMoney(r.amount)}</td>
                   <td class="num">${fmtMoney(r.openBalance)}</td>
@@ -2399,51 +2587,13 @@ function renderCollections() {
         <td>${r.collectionsDate ? fmtDate(r.collectionsDate) : '—'}</td>
         <td>${fmtDate(r.date)}</td>
         <td class="num">${escapeHtml(r.num)}</td>
-        <td class="client">${escapeHtml(r.name)}</td>
+        <td class="client">${escapeHtml(r.name)}${contactActionsHtml(r)}</td>
         <td class="num">${fmtMoney(r.openBalance)}</td>
         <td>${escapeHtml(r.salesRep || '—')}</td>
         <td class="num">${days !== null ? days + ' d' : '—'}</td>
         <td class="notes-cell">
           <div class="notes-text">${escapeHtml(r.notes || '')}</div>
           <button class="notes-edit-btn" data-edit-num="${escapeAttr(r.num)}">Edit</button>
-        </td>
-      </tr>
-    `;
-  }).join('');
-}
-
-// ---- Demand letters tab ----
-function renderDemand() {
-  const inv = STATE.invoices.filter(r => r.demandLetterSent).slice().sort((a,b) => {
-    const da = parseAnyDate(a.demandLetterDate)?.getTime() || 0;
-    const db = parseAnyDate(b.demandLetterDate)?.getTime() || 0;
-    return db - da;
-  });
-  const total = inv.reduce((s, r) => s + (r.openBalance || 0), 0);
-  document.getElementById('demandMeta').textContent = `${inv.length} invoice${inv.length === 1 ? '' : 's'} · ${fmtMoney(total)} total`;
-
-  const body = document.getElementById('demandBody');
-  if (inv.length === 0) {
-    body.innerHTML = '';
-    document.getElementById('demandEmpty').style.display = 'block';
-    return;
-  }
-  document.getElementById('demandEmpty').style.display = 'none';
-  const now = Date.now();
-  body.innerHTML = inv.map(r => {
-    const cd = parseAnyDate(r.demandLetterDate);
-    const days = cd ? Math.floor((now - cd.getTime()) / 86400000) : null;
-    return `
-      <tr>
-        <td>${r.demandLetterDate ? fmtDate(r.demandLetterDate) : '—'}</td>
-        <td class="client">${escapeHtml(r.name)}</td>
-        <td class="num">${escapeHtml(r.num)}</td>
-        <td>${fmtDate(r.date)}</td>
-        <td class="num">${fmtMoney(r.openBalance)}</td>
-        <td>${escapeHtml(r.salesRep || '—')}</td>
-        <td class="num">${days !== null ? days + ' d' : '—'}</td>
-        <td>
-          <button class="btn small secondary" data-reprint-client="${escapeAttr(r.name)}">Re-Print</button>
         </td>
       </tr>
     `;
@@ -2528,7 +2678,7 @@ function renderManage() {
 
 function exportLedgerCSV() {
   const rows = getFilteredSorted();
-  const headers = ['Date','Transaction Type','Num','Name','Memo/Description','Due Date','Amount','Open Balance','Sales Rep','In Collections','Collections Date','Reminder Count','Reminder Last Sent','Overdue Reminder Count','Overdue Reminder Last Sent','Demand Letter Sent','Demand Letter Date','Notes'];
+  const headers = ['Date','Transaction Type','Num','Name','Memo/Description','Due Date','Amount','Open Balance','Sales Rep','In Collections','Collections Date','Reminder Count','Reminder Last Sent','Overdue Reminder Count','Overdue Reminder Last Sent','Notes'];
   const csv = [headers.join(',')].concat(rows.map(r => [
     csvCell(fmtDate(r.date)),
     csvCell(r.transactionType || 'Invoice'),
@@ -2545,8 +2695,6 @@ function exportLedgerCSV() {
     csvCell(fmtDate(r.reminderLastSent)),
     r.overdueReminderCount || 0,
     csvCell(fmtDate(r.overdueReminderLastSent)),
-    r.demandLetterSent ? 'Yes' : 'No',
-    csvCell(fmtDate(r.demandLetterDate)),
     csvCell(r.notes)
   ].join(','))).join('\n');
   downloadFile(csv, 'overdue_ledger_' + dateStamp() + '.csv', 'text/csv');
@@ -2570,8 +2718,6 @@ function exportLedgerXLSX() {
     'Reminder Last Sent':         fmtDate(r.reminderLastSent),
     'Overdue Reminder Count':     r.overdueReminderCount || 0,
     'Overdue Reminder Last Sent': fmtDate(r.overdueReminderLastSent),
-    'Demand Letter Sent':         r.demandLetterSent ? 'Yes' : 'No',
-    'Demand Letter Date':         fmtDate(r.demandLetterDate),
     'Notes':                      r.notes || ''
   }));
   const ws = XLSX.utils.json_to_sheet(data);
@@ -2611,9 +2757,7 @@ function openInvoiceEditor(num) {
     notes:            inv.notes || '',
     salesRep:         inv.salesRep || '',
     inCollections:    !!inv.inCollections,
-    collectionsDate:  inv.collectionsDate || '',
-    demandLetterSent: !!inv.demandLetterSent,
-    demandLetterDate: inv.demandLetterDate || ''
+    collectionsDate:  inv.collectionsDate || ''
   };
   document.getElementById('invModalTitle').textContent = `Invoice ${inv.num}`;
   // Show reminder info if present
@@ -2642,28 +2786,19 @@ function openInvoiceEditor(num) {
   if (inv.lastUpdated && inv.lastUpdated !== inv.firstSeen) metaParts.push('Last updated: ' + fmtDateTime(inv.lastUpdated));
   document.getElementById('invMeta').textContent = metaParts.join(' · ');
 
-  // Demand letter section
-  const clientInvs = getClientInvoices(inv.name);
-  const clientTotal = clientInvs.reduce((s, r) => s + (r.openBalance || 0), 0);
-  const sentInvs = clientInvs.filter(r => r.demandLetterSent);
-  const statusEl = document.getElementById('invDemandStatus');
-  const clearBtn = document.getElementById('invClearDemand');
-  const noteEl = document.getElementById('invDemandNote');
-  if (sentInvs.length > 0) {
-    const latestDate = sentInvs.map(r => r.demandLetterDate).sort().reverse()[0];
-    statusEl.innerHTML = `<span style="color: var(--rust-deep); font-weight: 600;">Sent on ${fmtDate(latestDate)}</span> · ${sentInvs.length} of ${clientInvs.length} client invoice${clientInvs.length===1?'':'s'} marked`;
-    clearBtn.style.display = 'inline-block';
-  } else {
-    statusEl.innerHTML = `<span style="color: var(--ink-soft);">No demand letter sent yet for ${escapeHtml(inv.name)}</span>`;
-    clearBtn.style.display = 'none';
+  // Contact info + inline actions
+  const contact = STATE.contacts[inv.num];
+  const infoEl = document.getElementById('invContactInfo');
+  const actionsEl = document.getElementById('invContactActionsInline');
+  const parts = [];
+  if (contact) {
+    if (contact.clientFirst || contact.clientLast) parts.push(`<strong>${escapeHtml((contact.clientFirst + ' ' + contact.clientLast).trim())}</strong>`);
+    if (contact.clientMobile) parts.push(`Mobile: ${escapeHtml(contact.clientMobile)}`);
+    if (contact.clientPhone) parts.push(`Phone: ${escapeHtml(contact.clientPhone)}`);
   }
-  // Address availability
-  const contact = STATE.contacts[inv.name];
-  if (contact && contact.billStreet) {
-    noteEl.innerHTML = `Address on file: ${escapeHtml(contact.billStreet)}, ${escapeHtml(contact.billCity || '')} ${escapeHtml(contact.billZip || '')}. Letter will consolidate all ${clientInvs.length} open invoice${clientInvs.length===1?'':'s'} for this client (${fmtMoney(clientTotal)} total).`;
-  } else {
-    noteEl.innerHTML = `<span style="color: var(--rust); font-weight: 600;">⚠ No mailing address on file for this client.</span> Letter will still print — write the address in by hand or upload a Contact file. Letter will consolidate ${clientInvs.length} open invoice${clientInvs.length===1?'':'s'} (${fmtMoney(clientTotal)} total).`;
-  }
+  if (parts.length === 0) parts.push('<em>No contact info on file for this invoice.</em>');
+  infoEl.innerHTML = parts.join(' &middot; ');
+  actionsEl.innerHTML = contactActionsHtml(inv);
 
   document.getElementById('invModal').classList.add('show');
   setTimeout(() => document.getElementById('invNotes').focus(), 100);
@@ -2722,9 +2857,7 @@ async function quickMarkCollections(num) {
     notes:            inv.notes || '',
     salesRep:         inv.salesRep || '',
     inCollections:    !!inv.inCollections,
-    collectionsDate:  inv.collectionsDate || '',
-    demandLetterSent: !!inv.demandLetterSent,
-    demandLetterDate: inv.demandLetterDate || ''
+    collectionsDate:  inv.collectionsDate || ''
   };
   inv.inCollections = true;
   inv.collectionsDate = new Date().toISOString().slice(0,10);
@@ -2740,340 +2873,135 @@ async function quickMarkCollections(num) {
   renderAll();
 }
 
+
 // =====================================================================
-// DEMAND LETTER GENERATION
+// LOG CONTACT (call/text/voicemail tracking)
 // =====================================================================
+let logContactState = { invoiceNum: null, method: null };
 
-const COMPANY = {
-  name:    'Monster Tree Service of Rochester',
-  street:  '5607 Palmyra Road, Suite 81',
-  city:    'Pittsford',
-  state:   'NY',
-  zip:     '14534'
-};
-
-function getClientInvoices(clientName) {
-  // All open invoices for this client, oldest first
-  return STATE.invoices
-    .filter(r => r.name === clientName && (r.openBalance || 0) > 0)
-    .sort((a, b) => {
-      const da = parseAnyDate(a.date)?.getTime() || 0;
-      const db = parseAnyDate(b.date)?.getTime() || 0;
-      return da - db;
-    });
-}
-
-function generateDemandLetter(clientName) {
-  const invs = getClientInvoices(clientName);
-  if (invs.length === 0) {
-    showStatus('No open invoices for this client.', 'error');
-    return;
-  }
-  const contact = STATE.contacts[clientName] || {};
-  const totalDue = invs.reduce((s, r) => s + (r.openBalance || 0), 0);
-
-  const today = new Date();
-  const todayFmt = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  // Payment deadline: 30 days from today
-  const deadline = new Date(today);
-  deadline.setDate(deadline.getDate() + 30);
-  const deadlineFmt = deadline.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-  const recipientName = contact.fullName || clientName;
-  const addressLines = [];
-  if (contact.billStreet) addressLines.push(escapeHtml(contact.billStreet));
-  const cityLine = [contact.billCity, 'NY', contact.billZip].filter(Boolean).join(', ').replace('NY,', 'NY');
-  // Better format: City, NY ZIP
-  let cityStateZip = '';
-  if (contact.billCity || contact.billZip) {
-    cityStateZip = [contact.billCity, 'NY ' + (contact.billZip || '')].filter(x => x.trim()).join(', ');
-  }
-  if (cityStateZip) addressLines.push(escapeHtml(cityStateZip));
-  if (addressLines.length === 0) addressLines.push('<em style="color: #999">[Mailing address not on file — write in by hand]</em>');
-
-  const invoiceTableRows = invs.map(r => `
-    <tr>
-      <td>${escapeHtml(r.num)}</td>
-      <td>${fmtDate(r.date)}</td>
-      <td>${fmtDate(r.dueDate)}</td>
-      <td style="text-align: right;">${fmtMoney(r.openBalance)}</td>
-    </tr>
-  `).join('');
-
-  const invoiceListPlain = invs.map(r => `Invoice #${r.num} dated ${fmtDate(r.date)}`).join(', ');
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Demand for Payment — ${escapeHtml(recipientName)}</title>
-<style>
-  @page { size: letter; margin: 0.75in; }
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 12pt;
-    line-height: 1.4;
-    color: #000;
-    max-width: 7in;
-    margin: 0 auto;
-    padding: 20px;
-    background: white;
-  }
-  .toolbar {
-    background: #f5efe4;
-    border: 1px solid #c9bca3;
-    padding: 14px 18px;
-    margin-bottom: 24px;
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-    font-family: 'Arial', sans-serif;
-    font-size: 11pt;
-  }
-  .toolbar button {
-    background: #1a1612;
-    color: #f5efe4;
-    border: none;
-    padding: 8px 18px;
-    font-size: 11pt;
-    cursor: pointer;
-    border-radius: 2px;
-    font-weight: 600;
-  }
-  .toolbar button:hover { background: #2d5016; }
-  .toolbar .info { color: #555; font-size: 10pt; }
-  @media print {
-    .toolbar { display: none; }
-    body { padding: 0; max-width: none; }
-  }
-  .letterhead {
-    text-align: left;
-    margin-bottom: 32px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #000;
-  }
-  .letterhead .company {
-    font-family: 'Georgia', serif;
-    font-size: 18pt;
-    font-weight: bold;
-    letter-spacing: 0.02em;
-    margin-bottom: 4px;
-  }
-  .letterhead .addr { font-size: 10pt; color: #333; }
-  .date-line { margin-bottom: 28px; }
-  .recipient { margin-bottom: 28px; line-height: 1.35; }
-  .recipient .name { font-weight: bold; }
-  .subject {
-    margin-bottom: 24px;
-    font-weight: bold;
-    text-decoration: underline;
-  }
-  .salutation { margin-bottom: 16px; }
-  p { margin-bottom: 14px; text-align: justify; }
-  table.invoices {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 18px 0;
-    font-size: 11pt;
-  }
-  table.invoices th, table.invoices td {
-    border: 1px solid #000;
-    padding: 6px 10px;
-  }
-  table.invoices th {
-    background: #e8e3d8;
-    text-align: left;
-    font-weight: bold;
-  }
-  table.invoices tfoot td {
-    font-weight: bold;
-    background: #f5efe4;
-  }
-  .signature-block { margin-top: 48px; }
-  .signature-line { border-top: 1px solid #000; width: 280px; padding-top: 4px; margin-bottom: 4px; }
-  .deadline-emphasis {
-    background: #fff4e0;
-    border-left: 4px solid #c67c00;
-    padding: 12px 16px;
-    margin: 18px 0;
-    font-weight: bold;
-  }
-  .footer-note {
-    margin-top: 48px;
-    padding-top: 16px;
-    border-top: 1px solid #ccc;
-    font-size: 10pt;
-    color: #555;
-    font-style: italic;
-  }
-</style>
-</head>
-<body>
-
-<div class="toolbar">
-  <div>
-    <button onclick="window.print()">🖨 Print this Letter</button>
-    <button onclick="window.close()" style="background: transparent; color: #1a1612; border: 1px solid #1a1612; margin-left: 6px;">Close</button>
-  </div>
-  <div class="info">Use your browser's print dialog. Choose "Save as PDF" to keep a digital copy.</div>
-</div>
-
-<div class="letterhead">
-  <div class="company">${COMPANY.name}</div>
-  <div class="addr">${COMPANY.street} &middot; ${COMPANY.city}, ${COMPANY.state} ${COMPANY.zip}</div>
-</div>
-
-<div class="date-line">${todayFmt}</div>
-
-<div class="recipient">
-  <div class="name">${escapeHtml(recipientName)}</div>
-  ${addressLines.map(l => `<div>${l}</div>`).join('')}
-</div>
-
-<div class="subject">RE: Final Demand for Payment — Past Due Account · Total Due: ${fmtMoney(totalDue)}</div>
-
-<div class="salutation">Dear ${escapeHtml(recipientName)},</div>
-
-<p>This letter is a formal demand for payment of an outstanding balance owed to <strong>${COMPANY.name}</strong> for tree services rendered. Our records indicate that the following invoice${invs.length === 1 ? ' remains' : 's remain'} unpaid as of the date of this letter:</p>
-
-<table class="invoices">
-  <thead>
-    <tr>
-      <th>Invoice #</th>
-      <th>Invoice Date</th>
-      <th>Due Date</th>
-      <th style="text-align: right;">Amount Due</th>
-    </tr>
-  </thead>
-  <tbody>
-    ${invoiceTableRows}
-  </tbody>
-  <tfoot>
-    <tr>
-      <td colspan="3" style="text-align: right;">TOTAL DUE:</td>
-      <td style="text-align: right;">${fmtMoney(totalDue)}</td>
-    </tr>
-  </tfoot>
-</table>
-
-<p>Despite previous attempts to collect this balance, payment has not been received. We are now making formal demand for the full amount listed above.</p>
-
-<div class="deadline-emphasis">
-  Payment in the amount of ${fmtMoney(totalDue)} must be received no later than ${deadlineFmt} (30 days from the date of this letter).
-</div>
-
-<p>Payment may be made by check payable to "${COMPANY.name}" and mailed to the address shown above. If you have already remitted payment, please disregard this notice and accept our thanks.</p>
-
-<p><strong>If payment is not received in full by ${deadlineFmt}, ${COMPANY.name} will pursue all available remedies, which may include the filing of a claim in the appropriate New York State court to recover the amount owed, together with any applicable interest, court costs, and other recoverable expenses permitted under New York law.</strong></p>
-
-<p>If you dispute any portion of this debt, or wish to discuss a payment arrangement, please contact our office immediately at the address above. We would prefer to resolve this matter without resorting to legal action.</p>
-
-<p>Govern yourself accordingly.</p>
-
-<div class="signature-block">
-  <p style="margin-bottom: 60px;">Sincerely,</p>
-  <div class="signature-line"></div>
-  <div>${COMPANY.name}</div>
-</div>
-
-<div class="footer-note">
-  This letter constitutes a formal demand for payment under applicable New York State law. Document references: ${escapeHtml(invoiceListPlain)}. Letter generated on ${todayFmt}.
-</div>
-
-</body>
-</html>`;
-
-  // Open in new tab/window
-  const w = window.open('', '_blank');
-  if (!w) {
-    showStatus('Pop-up blocked — allow pop-ups for this site to view the letter.', 'error');
-    return;
-  }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-
-  // Mark invoices as having had a demand letter sent
-  markDemandLettersSent(invs.map(i => i.num));
-}
-
-async function markDemandLettersSent(invoiceNums) {
-  const today = new Date().toISOString().slice(0,10);
-  // Take snapshots of every invoice we are about to modify (for stale-data check)
-  const snapshots = new Map();
-  STATE.invoices.forEach(inv => {
-    if (invoiceNums.includes(inv.num) && !inv.demandLetterSent) {
-      snapshots.set(inv.num, {
-        notes:            inv.notes || '',
-        salesRep:         inv.salesRep || '',
-        inCollections:    !!inv.inCollections,
-        collectionsDate:  inv.collectionsDate || '',
-        demandLetterSent: !!inv.demandLetterSent,
-        demandLetterDate: inv.demandLetterDate || ''
-      });
-      inv.demandLetterSent = true;
-      inv.demandLetterDate = today;
-      inv.lastUpdated = nowISO();
-    }
-  });
-  if (snapshots.size === 0) {
-    showStatus('Demand letter generated (already marked previously)', 'success');
-    return;
-  }
-  // Save each one with its snapshot — single-invoice saves are fast (~300ms each)
-  // and they will warn on stale data per invoice
-  let saved = 0, cancelled = 0;
-  for (const [num, snap] of snapshots.entries()) {
-    const ok = await saveSingleInvoice(num, snap);
-    if (ok) saved++;
-    else {
-      // User cancelled this one — revert the in-memory invoice
-      const inv = STATE.invoices.find(r => r.num === num);
-      if (inv) Object.assign(inv, snap);
-      cancelled++;
-    }
-  }
-  renderAll();
-  if (cancelled === 0) {
-    showStatus(`Demand letter generated · ${saved} invoice${saved===1?'':'s'} marked as sent`, 'success');
-  } else if (saved === 0) {
-    showStatus(`All ${cancelled} mark-as-sent operations cancelled (stale data)`, 'error');
-  } else {
-    showStatus(`Demand letter: ${saved} marked, ${cancelled} cancelled due to stale data`, 'success');
-  }
-}
-
-async function unmarkDemandLetter(invoiceNum) {
+function openLogContactModal(invoiceNum, prefilledMethod) {
   const inv = STATE.invoices.find(r => r.num === invoiceNum);
   if (!inv) return;
-  // Snapshot before modification (no modal-level snapshot for this call path)
+  logContactState.invoiceNum = invoiceNum;
+  logContactState.method = prefilledMethod || null;
+  document.getElementById('logContactTitle').textContent = `Log Contact — Invoice ${inv.num}`;
+  const contact = STATE.contacts[inv.num];
+  const clientLabel = contact
+    ? `${(contact.clientFirst + ' ' + contact.clientLast).trim() || inv.name}`
+    : inv.name;
+  document.getElementById('logContactSub').textContent = `${clientLabel} · ${fmtMoney(inv.openBalance)} open`;
+  document.getElementById('logContactNotes').value = '';
+  // Method tile selection
+  document.querySelectorAll('[data-log-method-tile]').forEach(t => {
+    t.classList.toggle('active', t.dataset.logMethodTile === prefilledMethod);
+  });
+  document.getElementById('logContactModal').classList.add('show');
+  setTimeout(() => document.getElementById('logContactNotes').focus(), 100);
+}
+
+function closeLogContactModal() {
+  logContactState = { invoiceNum: null, method: null };
+  document.getElementById('logContactModal').classList.remove('show');
+}
+
+async function saveContactLog() {
+  const { invoiceNum, method } = logContactState;
+  if (!invoiceNum) return;
+  if (!method) {
+    showStatus('Pick a method (Call / Text / Voicemail) first.', 'error');
+    return;
+  }
+  const inv = STATE.invoices.find(r => r.num === invoiceNum);
+  if (!inv) return;
+  const outcome = document.getElementById('logContactNotes').value.trim();
+  const now = new Date();
+  const stamp = now.toLocaleString('en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: 'numeric', minute: '2-digit'
+  });
+  const who = STATE.currentSender ? ` · ${STATE.currentSender}` : '';
+  const line = outcome
+    ? `[${stamp} · ${method}${who}] ${outcome}`
+    : `[${stamp} · ${method}${who}]`;
+
+  // Snapshot for stale-data protection
   const snapshot = {
-    notes:            inv.notes || '',
-    salesRep:         inv.salesRep || '',
-    inCollections:    !!inv.inCollections,
-    collectionsDate:  inv.collectionsDate || '',
-    demandLetterSent: !!inv.demandLetterSent,
-    demandLetterDate: inv.demandLetterDate || ''
+    notes:           inv.notes || '',
+    salesRep:        inv.salesRep || '',
+    inCollections:   !!inv.inCollections,
+    collectionsDate: inv.collectionsDate || ''
   };
-  inv.demandLetterSent = false;
-  inv.demandLetterDate = '';
+  // Prepend the new line to the existing notes (newest first)
+  inv.notes = line + (inv.notes ? '\n' + inv.notes : '');
   inv.lastUpdated = nowISO();
   const ok = await saveSingleInvoice(invoiceNum, snapshot);
   if (ok) {
-    showStatus('Demand letter status cleared', 'success');
+    showStatus(`Logged ${method} contact`, 'success');
+    closeLogContactModal();
+    // If the invoice modal is open on this invoice, refresh its notes textarea
+    if (STATE.editingNum === invoiceNum) {
+      document.getElementById('invNotes').value = inv.notes;
+      // Also update snapshot since we just wrote
+      STATE.editingSnapshot.notes = inv.notes;
+    }
+    renderAll();
   } else {
+    // Revert notes on cancellation
     Object.assign(inv, snapshot);
     showStatus('Cancelled — sheet had newer changes.', 'error');
+    closeLogContactModal();
   }
-  renderAll();
 }
+
 
 // =====================================================================
 // HELPERS
 // =====================================================================
+
+// Strip a phone number to a tel:/sms:-compatible form (digits + optional leading +)
+function cleanPhone(v) {
+  if (!v) return '';
+  const s = String(v).trim();
+  // Keep leading +, strip everything else non-digit
+  const hasPlus = s.startsWith('+');
+  const digits = s.replace(/\D/g, '');
+  if (!digits) return '';
+  return hasPlus ? '+' + digits : digits;
+}
+
+// Build the call/text action HTML for a ledger row
+function contactActionsHtml(inv) {
+  const c = STATE.contacts[inv.num];
+  const mobile = c ? cleanPhone(c.clientMobile) : '';
+  const phone  = c ? cleanPhone(c.clientPhone)  : '';
+  const hasSender = !!STATE.currentSender;
+  const firstName = c && c.clientFirst ? c.clientFirst : '';
+  // If no sender picked, texting is disabled with a helpful title
+  const smsTemplate = firstName
+    ? `Hi there ${firstName}, this is ${STATE.currentSender || '[your name]'} from Monster Tree Service. You have an overdue invoice that we have sent to your email. Please check your email and call with any questions.`
+    : `Hi, this is ${STATE.currentSender || '[your name]'} from Monster Tree Service. You have an overdue invoice that we have sent to your email. Please check your email and call with any questions.`;
+
+  const parts = [];
+  if (phone || mobile) {
+    // Prefer landline for call, fallback to mobile
+    const callNum = phone || mobile;
+    parts.push(`<a href="tel:${escapeAttr(callNum)}" title="Call ${callNum}" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Call">📞</a>`);
+  } else {
+    parts.push(`<a class="disabled" title="No phone on file">📞</a>`);
+  }
+  if (mobile) {
+    if (hasSender) {
+      const smsUri = `sms:${cleanPhone(mobile)}?&body=${encodeURIComponent(smsTemplate)}`;
+      parts.push(`<a href="${smsUri}" title="Text ${mobile}" data-contact-log="${escapeAttr(inv.num)}" data-log-method="Text">💬</a>`);
+    } else {
+      parts.push(`<a class="disabled" title="Pick your name on Data & Upload → Sender before texting">💬</a>`);
+    }
+  } else {
+    parts.push(`<a class="disabled" title="No mobile number on file">💬</a>`);
+  }
+  return `<span class="contact-actions">${parts.join('')}</span>`;
+}
+
 
 function formatReminderCell(r) {
   const rc = r.reminderCount || 0;
@@ -3150,7 +3078,36 @@ wireDropZone('dropEmail', handleEmailFile);
 // Filters
 document.getElementById('filterText').addEventListener('input', e => { STATE.currentFilters.text = e.target.value; renderLedger(); });
 document.getElementById('filterRep').addEventListener('change', e => { STATE.currentFilters.rep = e.target.value; renderLedger(); });
-document.getElementById('filterYear').addEventListener('change', e => { STATE.currentFilters.year = e.target.value; renderLedger(); });
+// Chip clicks: toggle year/month filters
+document.getElementById('filterYearChips').addEventListener('click', e => {
+  const chip = e.target.closest('[data-year]');
+  if (!chip) return;
+  const y = parseInt(chip.dataset.year, 10);
+  const arr = STATE.currentFilters.years;
+  const idx = arr.indexOf(y);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(y);
+  renderLedger();
+});
+document.getElementById('filterMonthChips').addEventListener('click', e => {
+  const chip = e.target.closest('[data-month]');
+  if (!chip) return;
+  const m = parseInt(chip.dataset.month, 10);
+  const arr = STATE.currentFilters.months;
+  const idx = arr.indexOf(m);
+  if (idx >= 0) arr.splice(idx, 1); else arr.push(m);
+  renderLedger();
+});
+document.getElementById('clearFilters').addEventListener('click', () => {
+  STATE.currentFilters.years = [];
+  STATE.currentFilters.months = [];
+  STATE.currentFilters.text = '';
+  STATE.currentFilters.rep = '';
+  STATE.currentFilters.status = '';
+  document.getElementById('filterText').value = '';
+  document.getElementById('filterRep').value = '';
+  document.getElementById('filterStatus').value = '';
+  renderLedger();
+});
 document.getElementById('filterStatus').addEventListener('change', e => { STATE.currentFilters.status = e.target.value; renderLedger(); });
 
 // Sort
@@ -3169,6 +3126,20 @@ document.querySelectorAll('#ledgerTable thead th[data-sort]').forEach(th => {
 
 // Notes / collections cell actions (event delegation)
 document.body.addEventListener('click', e => {
+  // Click-to-call/text — automatically prompt to log the contact after the click
+  const contactBtn = e.target.closest('[data-contact-log]');
+  if (contactBtn && !contactBtn.classList.contains('disabled')) {
+    const num = contactBtn.dataset.contactLog;
+    const method = contactBtn.dataset.logMethod;
+    // Let the browser proceed with the tel: or sms: link, then pop the log modal shortly after
+    setTimeout(() => {
+      if (confirm(`Did you reach out via ${method}?\n\nOK = log it, Cancel = don't log`)) {
+        openLogContactModal(num, method);
+      }
+    }, 500);
+    // Do not preventDefault — let the tel:/sms: link work
+    return;
+  }
   const editBtn = e.target.closest('[data-edit-num]');
   if (editBtn) { openInvoiceEditor(editBtn.dataset.editNum); return; }
   const collBtn = e.target.closest('[data-mark-collections]');
@@ -3178,11 +3149,7 @@ document.body.addEventListener('click', e => {
     }
     return;
   }
-  const reprintBtn = e.target.closest('[data-reprint-client]');
-  if (reprintBtn) {
-    generateDemandLetter(reprintBtn.dataset.reprintClient);
-    return;
-  }
+
 });
 
 // Modal
@@ -3195,57 +3162,8 @@ document.getElementById('invCollChk').addEventListener('change', e => {
 });
 document.getElementById('invCancel').addEventListener('click', closeInvoiceEditor);
 document.getElementById('invSave').addEventListener('click', saveInvoiceEdits);
-document.getElementById('invGenerateDemand').addEventListener('click', async () => {
-  if (!STATE.editingNum) return;
-  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
-  if (!inv) return;
-  // First save any pending edits, then generate the letter
-  await saveInvoiceEditsQuiet();
-  generateDemandLetter(inv.name);
-  // Reopen the modal to show updated status
-  setTimeout(() => openInvoiceEditor(inv.num), 250);
-});
-document.getElementById('invClearDemand').addEventListener('click', async () => {
-  if (!STATE.editingNum) return;
-  const inv = STATE.invoices.find(r => r.num === STATE.editingNum);
-  if (!inv) return;
-  const clientInvs = getClientInvoices(inv.name);
-  if (!confirm(`Clear demand letter status for all ${clientInvs.length} of ${escapeHtml(inv.name)}'s invoices?`)) return;
-  // Snapshot every invoice we are about to modify
-  const snapshots = new Map();
-  STATE.invoices.forEach(r => {
-    if (r.name === inv.name && r.demandLetterSent) {
-      snapshots.set(r.num, {
-        notes:            r.notes || '',
-        salesRep:         r.salesRep || '',
-        inCollections:    !!r.inCollections,
-        collectionsDate:  r.collectionsDate || '',
-        demandLetterSent: !!r.demandLetterSent,
-        demandLetterDate: r.demandLetterDate || ''
-      });
-      r.demandLetterSent = false;
-      r.demandLetterDate = '';
-      r.lastUpdated = nowISO();
-    }
-  });
-  let saved = 0, cancelled = 0;
-  for (const [num, snap] of snapshots.entries()) {
-    const ok = await saveSingleInvoice(num, snap);
-    if (ok) saved++;
-    else {
-      const rev = STATE.invoices.find(r => r.num === num);
-      if (rev) Object.assign(rev, snap);
-      cancelled++;
-    }
-  }
-  renderAll();
-  openInvoiceEditor(inv.num); // refresh modal
-  if (cancelled === 0) {
-    showStatus(`Cleared demand letter status on ${saved} invoice${saved===1?'':'s'}`, 'success');
-  } else {
-    showStatus(`Cleared ${saved}, ${cancelled} cancelled due to stale data`, 'success');
-  }
-});
+
+
 document.getElementById('invModal').addEventListener('click', e => {
   if (e.target.id === 'invModal') closeInvoiceEditor();
 });
@@ -3275,8 +3193,8 @@ document.getElementById('agingMatrix').addEventListener('click', e => {
   const y = cell.dataset.drillYear;
   const m = cell.dataset.drillMonth;
   if (y && m !== undefined) {
-    STATE.currentFilters.year = y;
-    document.getElementById('filterYear').value = y;
+    STATE.currentFilters.years = [parseInt(y, 10)];
+    STATE.currentFilters.months = [parseInt(m, 10)];
     const key = `${y}-${String(parseInt(m,10)+1).padStart(2,'0')}`;
     document.querySelector('.tab-btn[data-tab="monthly"]').click();
     renderLedger();
@@ -3285,8 +3203,8 @@ document.getElementById('agingMatrix').addEventListener('click', e => {
       if (row) { row.classList.add('open'); row.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     }, 100);
   } else if (y) {
-    STATE.currentFilters.year = y;
-    document.getElementById('filterYear').value = y;
+    STATE.currentFilters.years = [parseInt(y, 10)];
+    STATE.currentFilters.months = [];
     document.querySelector('.tab-btn[data-tab="ledger"]').click();
     renderLedger();
   }
@@ -3408,6 +3326,61 @@ setTimeout(() => {
   const btn = document.getElementById('loadInitialBtn');
   if (btn && !btn._wired) { btn._wired = true; btn.addEventListener('click', loadEmbeddedInitialData); }
 }, 100);
+
+// Sender management events
+document.getElementById('addSenderBtn').addEventListener('click', async () => {
+  const input = document.getElementById('newSenderName');
+  const name = input.value.trim();
+  if (!name) return;
+  if (STATE.senders.includes(name)) {
+    showStatus(`"${name}" is already in the list`, 'error');
+    return;
+  }
+  STATE.senders.push(name);
+  input.value = '';
+  await saveSendersOnly();
+  showStatus(`Added ${name} to sender names`, 'success');
+  renderSenders();
+});
+document.getElementById('newSenderName').addEventListener('keypress', e => {
+  if (e.key === 'Enter') document.getElementById('addSenderBtn').click();
+});
+document.getElementById('senderManagementTiles').addEventListener('click', async e => {
+  const del = e.target.closest('[data-del-sender]');
+  if (del) {
+    e.stopPropagation();
+    const name = del.dataset.delSender;
+    if (!confirm(`Remove "${name}" from the sender list?`)) return;
+    STATE.senders = STATE.senders.filter(n => n !== name);
+    if (STATE.currentSender === name) {
+      STATE.currentSender = '';
+      localStorage.removeItem('mts_current_sender');
+    }
+    await saveSendersOnly();
+    showStatus(`Removed ${name}`, 'success');
+    renderSenders();
+    renderLedger();
+    return;
+  }
+});
+// Sender quick-pick from banner
+document.getElementById('senderQuickPick').addEventListener('click', e => {
+  const chip = e.target.closest('[data-pick-sender]');
+  if (!chip) return;
+  const name = chip.dataset.pickSender;
+  if (STATE.currentSender === name) {
+    // Toggle off
+    STATE.currentSender = '';
+    localStorage.removeItem('mts_current_sender');
+  } else {
+    STATE.currentSender = name;
+    localStorage.setItem('mts_current_sender', name);
+  }
+  renderSenders();
+  renderLedger(); // rebuild ledger to enable/disable text buttons
+  renderMonthly();
+  renderCollections();
+});
 
 // Wire up sign-in UI
 document.getElementById('signInBtn').addEventListener('click', signIn);
