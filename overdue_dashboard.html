@@ -790,6 +790,18 @@
       <div id="filterMonthChips" class="chip-group"></div>
       <button class="btn small secondary" id="clearFilters" style="margin-left: 8px;">Clear Filters</button>
     </div>
+    <div id="ledgerTotalsBar" style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 18px; padding: 12px 16px; margin-bottom: 12px; background: var(--paper-2); border: 1px solid var(--line); border-radius: 3px;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 600;">Showing</span>
+        <span id="ledgerFilteredCount" style="font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 14px;">0</span>
+        <span style="font-size: 12px; color: var(--ink-soft);">of <span id="ledgerTotalCount">0</span> invoices</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-soft); font-weight: 600;">Filtered Open Balance</span>
+        <span id="ledgerFilteredTotal" style="font-family: 'Fraunces', serif; font-weight: 700; font-size: 20px; color: var(--rust-deep);">$0.00</span>
+      </div>
+      <div id="ledgerFilteredMeta" style="font-size: 11px; color: var(--ink-soft); font-style: italic; margin-left: auto;"></div>
+    </div>
     <div class="table-wrap">
       <table id="ledgerTable">
         <thead>
@@ -2398,6 +2410,26 @@ function renderLedger() {
     const ind = th.querySelector('.sort-ind');
     if (ind) ind.textContent = (k === STATE.currentSort.key) ? (STATE.currentSort.dir === 'asc' ? '↑' : '↓') : '↕';
   });
+
+  // Update filtered totals bar
+  const filteredTotal = rows.reduce((s, r) => s + (r.openBalance || 0), 0);
+  document.getElementById('ledgerFilteredCount').textContent = rows.length;
+  document.getElementById('ledgerTotalCount').textContent = STATE.invoices.length;
+  document.getElementById('ledgerFilteredTotal').textContent = fmtMoney(filteredTotal);
+  // Show a description of which filters are active
+  const activeFilterParts = [];
+  if (STATE.currentFilters.text) activeFilterParts.push(`search "${STATE.currentFilters.text}"`);
+  if (STATE.currentFilters.rep) activeFilterParts.push(`rep: ${STATE.currentFilters.rep}`);
+  if (STATE.currentFilters.status === 'collections') activeFilterParts.push('in collections');
+  if (STATE.currentFilters.status === 'not-collections') activeFilterParts.push('not in collections');
+  if (STATE.currentFilters.years.length > 0) activeFilterParts.push(`years: ${STATE.currentFilters.years.join(', ')}`);
+  if (STATE.currentFilters.months.length > 0) {
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    activeFilterParts.push(`months: ${STATE.currentFilters.months.map(m => monthNames[m]).join(', ')}`);
+  }
+  document.getElementById('ledgerFilteredMeta').textContent = activeFilterParts.length > 0
+    ? 'Filters: ' + activeFilterParts.join(' · ')
+    : 'No filters active';
 
   const body = document.getElementById('ledgerBody');
   if (STATE.invoices.length === 0) {
