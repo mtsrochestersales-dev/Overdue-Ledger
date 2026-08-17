@@ -813,7 +813,6 @@
             <th data-sort="amount">Amount <span class="sort-ind">↕</span></th>
             <th data-sort="openBalance">Open Bal. <span class="sort-ind">↕</span></th>
             <th data-sort="salesRep">Sales Rep <span class="sort-ind">↕</span></th>
-            <th data-sort="reminders">Reminders <span class="sort-ind">↕</span></th>
             <th data-sort="collections">Collections <span class="sort-ind">↕</span></th>
             <th data-sort="notes">Notes <span class="sort-ind">↕</span></th>
           </tr>
@@ -954,8 +953,8 @@
         <div id="contactLastUpload" class="last-uploaded" style="display:none"></div>
       </div>
       <div class="upload-card" id="dropEmail">
-        <h3>④ Email Follow-Up</h3>
-        <p>Counts of <em>Invoice Due Reminder</em> and <em>Invoice Overdue Reminder</em> emails per invoice. Expected columns: <span class="mono">Ref #</span>, <span class="mono">Template</span>, <span class="mono">Sent At</span>.</p>
+        <h3>④ Email History</h3>
+        <p>Tracks <em>Code Based Invoice Email</em>, <em>Invoice Due Reminder</em>, and <em>Invoice Overdue Reminder</em> events per invoice. Adds one line per email to the invoice's notes. Expected columns: <span class="mono">Ref #</span>, <span class="mono">Template</span>, <span class="mono">Sent At</span>, <span class="mono">Status</span>.</p>
         <input type="file" id="fileEmail" accept=".xlsx,.xls,.csv" />
         <label for="fileEmail" class="btn">Choose Email File</label>
         <div class="filespec">.xlsx · .xls · .csv accepted</div>
@@ -1943,6 +1942,15 @@ function parseContactWorkbook(wb) {
 
 // Parse the Email Follow-Up CSV/XLSX. Expected columns: Ref #, Template, Sent At
 // Returns: { invoiceNum: { reminderCount, reminderLastSent, overdueReminderCount, overdueReminderLastSent } }
+// Parse the email log workbook.
+// Returns: { invoiceNum: [ {sentAt: Date, template: string, status: string}, ... ] }
+// Only rows whose template is one of the TRACKED_EMAIL_TEMPLATES are kept.
+const TRACKED_EMAIL_TEMPLATES = new Set([
+  'Code Based Invoice Email',
+  'Invoice Due Reminder',
+  'Invoice Overdue Reminder'
+]);
+
 function parseEmailFollowupWorkbook(wb) {
   for (const sheetName of wb.SheetNames) {
     const sheet = wb.Sheets[sheetName];
@@ -1965,72 +1973,107 @@ function parseEmailFollowupWorkbook(wb) {
     const refCol      = header.findIndex(h => h === 'ref #' || h === 'ref#' || h === 'ref');
     const templateCol = header.indexOf('template');
     const sentAtCol   = header.findIndex(h => h.includes('sent') && h.includes('at'));
+    const statusCol   = header.indexOf('status');
     if (refCol === -1 || templateCol === -1 || sentAtCol === -1) continue;
 
-    // Aggregate by invoice number
-    const stats = {};
+    // Collect individual email events by invoice number
+    const events = {};
     for (let i = headerRowIdx + 1; i < rows.length; i++) {
       const row = rows[i] || [];
       const num = normalizeInvoiceNum(row[refCol]);
       const template = String(row[templateCol] || '').trim();
       if (!num || !template) continue;
-      // Match the specific templates that count as reminders
-      const isReminder = template === 'Invoice Due Reminder';
-      const isOverdueReminder = template === 'Invoice Overdue Reminder';
-      if (!isReminder && !isOverdueReminder) continue;
+      if (!TRACKED_EMAIL_TEMPLATES.has(template)) continue;
 
       const dt = parseAnyDate(row[sentAtCol]);
-      const dtISO = dt ? dt.toISOString().slice(0,10) : '';
+      if (!dt) continue; // must have a sent-at date
+      const status = statusCol !== -1 ? String(row[statusCol] || '').trim() : '';
 
-      if (!stats[num]) stats[num] = { reminderCount: 0, reminderLastSent: '', overdueReminderCount: 0, overdueReminderLastSent: '' };
-      if (isReminder) {
-        stats[num].reminderCount++;
-        if (dtISO && (!stats[num].reminderLastSent || dtISO > stats[num].reminderLastSent)) {
-          stats[num].reminderLastSent = dtISO;
-        }
-      } else {
-        stats[num].overdueReminderCount++;
-        if (dtISO && (!stats[num].overdueReminderLastSent || dtISO > stats[num].overdueReminderLastSent)) {
-          stats[num].overdueReminderLastSent = dtISO;
-        }
-      }
+      if (!events[num]) events[num] = [];
+      events[num].push({ sentAt: dt, template, status });
     }
-    if (Object.keys(stats).length > 0) return stats;
+    if (Object.keys(events).length > 0) return events;
   }
   return {};
 }
 
-// Merge email reminder stats into existing invoices. The file is the source of truth:
-// invoices not in the file have their counts reset to 0.
-function mergeEmailFollowupData(stats, filename) {
-  let matched = 0, withReminders = 0, withOverdueReminders = 0;
-  STATE.invoices.forEach(inv => {
-    const s = stats[inv.num];
-    if (s) {
-      inv.reminderCount = s.reminderCount;
-      inv.reminderLastSent = s.reminderLastSent;
-      inv.overdueReminderCount = s.overdueReminderCount;
-      inv.overdueReminderLastSent = s.overdueReminderLastSent;
-      matched++;
-      if (s.reminderCount > 0) withReminders++;
-      if (s.overdueReminderCount > 0) withOverdueReminders++;
-    } else {
-      // Reset to zero for invoices not in the email file
-      inv.reminderCount = 0;
-      inv.reminderLastSent = '';
-      inv.overdueReminderCount = 0;
-      inv.overdueReminderLastSent = '';
-    }
-    inv.lastUpdated = nowISO();
+// Format a single email event as a note line.
+// Style matches the click-to-call/text log entries but uses "SO Email" as the "user".
+// Example: [08/17/2026, 3:40 PM · SO Email: Code Based Invoice Email · SO Email · delivered]
+function formatEmailNoteLine(evt) {
+  const stamp = evt.sentAt.toLocaleString('en-US', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: 'numeric', minute: '2-digit'
   });
+  const outcome = evt.status ? `${evt.template} — ${evt.status}` : evt.template;
+  return `[${stamp} · Email · SO Email] ${outcome}`;
+}
+
+// Detect existing SO Email lines so we can strip them out and re-add fresh from the file.
+// Any line starting with `[` and containing `· SO Email` counts.
+function isSOEmailLine(line) {
+  // Match either format so old lines get cleaned up on next upload:
+  //   New: [.....· Email · SO Email] ...
+  //   Old: [.....· SO Email: ..... · SO Email...]
+  return /^\[[^\]]*\]\s*.*\bSO Email\b/.test(line) || /^\[[^\]]*·\s*SO Email/.test(line);
+}
+
+// Merge email events into invoice notes. The email file is the source of truth for SO Email lines:
+// every previous SO Email line in the notes is removed and replaced with the current file's entries.
+// Human-added lines and click-to-call/text entries are preserved.
+function mergeEmailFollowupData(events, filename) {
+  let invoicesTouched = 0;
+  let totalLinesAdded = 0;
+  let invoicesWithEmails = 0;
+
+  STATE.invoices.forEach(inv => {
+    // Strip existing SO Email lines from the notes
+    const existingLines = (inv.notes || '').split('\n');
+    const keptLines = existingLines.filter(l => !isSOEmailLine(l));
+    const strippedCount = existingLines.length - keptLines.length;
+
+    // Build fresh SO Email lines from the file (most recent first)
+    const invEvents = events[inv.num] || [];
+    invEvents.sort((a, b) => b.sentAt.getTime() - a.sentAt.getTime());
+    const newLines = invEvents.map(formatEmailNoteLine);
+
+    // Compose: SO Email lines on top (newest first), then any preserved lines below
+    let newNotes = '';
+    if (newLines.length > 0) {
+      newNotes = newLines.join('\n');
+      if (keptLines.length > 0 && keptLines.some(l => l.trim())) {
+        newNotes += '\n' + keptLines.join('\n');
+      }
+    } else {
+      newNotes = keptLines.join('\n');
+    }
+    // Clean up leading blank lines
+    newNotes = newNotes.replace(/^\n+/, '');
+
+    if (newNotes !== (inv.notes || '')) {
+      inv.notes = newNotes;
+      inv.lastUpdated = nowISO();
+      invoicesTouched++;
+    }
+    if (invEvents.length > 0) invoicesWithEmails++;
+    totalLinesAdded += newLines.length;
+  });
+
   STATE.meta.lastEmailUpload = nowISO();
   STATE.meta.lastEmailFile = filename;
   STATE.history.unshift({
     when: nowISO(), type: 'email', filename,
-    matched, withReminders, withOverdueReminders, total: Object.keys(stats).length
+    matched: invoicesWithEmails,
+    linesAdded: totalLinesAdded,
+    total: Object.keys(events).length
   });
   STATE.history = STATE.history.slice(0, 100);
-  return { matched, withReminders, withOverdueReminders, totalInFile: Object.keys(stats).length };
+  return {
+    touched: invoicesTouched,
+    withEmails: invoicesWithEmails,
+    linesAdded: totalLinesAdded,
+    totalInFile: Object.keys(events).length
+  };
 }
 
 // =====================================================================
@@ -2248,7 +2291,7 @@ async function handleContactFile(file) {
 }
 
 async function handleEmailFile(file) {
-  showStatus('Reading Email Follow-Up file…', 'info', true);
+  showStatus('Reading Email file…', 'info', true);
   try {
     let wb;
     // Support both XLSX and CSV
@@ -2258,14 +2301,14 @@ async function handleEmailFile(file) {
     } else {
       wb = await readFileAsWorkbook(file);
     }
-    const stats = parseEmailFollowupWorkbook(wb);
-    if (Object.keys(stats).length === 0) {
-      showStatus('No reminder data found. Expected columns: Ref #, Template, Sent At. Only "Invoice Due Reminder" and "Invoice Overdue Reminder" templates are counted.', 'error');
+    const events = parseEmailFollowupWorkbook(wb);
+    if (Object.keys(events).length === 0) {
+      showStatus('No matching email data found. Expected columns: Ref #, Template, Sent At. Only Code Based Invoice Email, Invoice Due Reminder, and Invoice Overdue Reminder templates are tracked.', 'error');
       return;
     }
-    const result = mergeEmailFollowupData(stats, file.name);
+    const result = mergeEmailFollowupData(events, file.name);
     await saveState();
-    showStatus(`Email follow-up imported · ${result.matched} invoices matched · ${result.withReminders} with reminders · ${result.withOverdueReminders} with overdue reminders`, 'success');
+    showStatus(`Email history imported · ${result.withEmails} invoices matched · ${result.linesAdded} email entries added to notes`, 'success');
     renderAll();
   } catch (e) {
     console.error(e);
@@ -2362,11 +2405,6 @@ function getFilteredSorted() {
       va = a.inCollections ? (parseAnyDate(a.collectionsDate)?.getTime() || 1) : 0;
       vb = b.inCollections ? (parseAnyDate(b.collectionsDate)?.getTime() || 1) : 0;
     }
-    else if (key === 'reminders') {
-      // Sort by total reminder count (combined), then by overdue count
-      va = (a.reminderCount || 0) + (a.overdueReminderCount || 0) * 10;
-      vb = (b.reminderCount || 0) + (b.overdueReminderCount || 0) * 10;
-    }
     else if (key === 'num') { va = String(a.num || ''); vb = String(b.num || ''); }
     else { va = String(a[key] || '').toLowerCase(); vb = String(b[key] || '').toLowerCase(); }
     if (va < vb) return dir === 'asc' ? -1 : 1;
@@ -2446,7 +2484,6 @@ function renderLedger() {
         <td class="num">${fmtMoney(r.amount)}</td>
         <td class="num">${fmtMoney(r.openBalance)}</td>
         <td>${escapeHtml(r.salesRep || '—')}</td>
-        <td class="reminders-cell">${formatReminderCell(r)}</td>
         <td class="collections-cell">
           ${r.inCollections
             ? `<span class="collections-badge">In Collections</span>${r.collectionsDate ? `<span class="date-text">${fmtDate(r.collectionsDate)}</span>` : ''}`
@@ -2653,7 +2690,7 @@ function renderMonthly() {
           <table>
             <thead><tr>
               <th>Inv. Date</th><th>Invoice #</th><th>Client</th><th>Due Date</th>
-              <th>Amount</th><th>Open Bal.</th><th>Sales Rep</th><th>Reminders</th><th>Collections</th><th>Notes</th>
+              <th>Amount</th><th>Open Bal.</th><th>Sales Rep</th><th>Collections</th><th>Notes</th>
             </tr></thead>
             <tbody>
               ${items.map(r => `
@@ -2665,8 +2702,7 @@ function renderMonthly() {
                   <td class="num">${fmtMoney(r.amount)}</td>
                   <td class="num">${fmtMoney(r.openBalance)}</td>
                   <td>${escapeHtml(r.salesRep || '—')}</td>
-                  <td class="reminders-cell">${formatReminderCell(r)}</td>
-                  <td>${r.inCollections ? `<span class="collections-badge">${r.collectionsDate ? fmtDate(r.collectionsDate) : 'Yes'}</span>` : '—'}</td>
+                            <td>${r.inCollections ? `<span class="collections-badge">${r.collectionsDate ? fmtDate(r.collectionsDate) : 'Yes'}</span>` : '—'}</td>
                   <td class="notes-cell"><div class="notes-text">${escapeHtml(r.notes || '')}</div></td>
                 </tr>
               `).join('')}
@@ -2744,9 +2780,14 @@ function renderManage() {
   const emailEl = document.getElementById('emailLastUpload');
   if (STATE.meta.lastEmailUpload) {
     emailEl.style.display = 'inline-block';
-    const remTotal = STATE.invoices.reduce((s, r) => s + (r.reminderCount || 0), 0);
-    const overTotal = STATE.invoices.reduce((s, r) => s + (r.overdueReminderCount || 0), 0);
-    emailEl.textContent = `Last upload: ${fmtDateTime(STATE.meta.lastEmailUpload)} · ${remTotal} reminder${remTotal===1?'':'s'} · ${overTotal} overdue reminder${overTotal===1?'':'s'}`;
+    // Count SO Email lines currently in notes to give a summary
+    let emailLineCount = 0, invsWithEmailLines = 0;
+    STATE.invoices.forEach(inv => {
+      const lines = (inv.notes || '').split('\n').filter(l => /^\[.*\bSO Email\b.*/.test(l));
+      if (lines.length > 0) invsWithEmailLines++;
+      emailLineCount += lines.length;
+    });
+    emailEl.textContent = `Last upload: ${fmtDateTime(STATE.meta.lastEmailUpload)} · ${emailLineCount} email${emailLineCount===1?'':'s'} across ${invsWithEmailLines} invoice${invsWithEmailLines===1?'':'s'}`;
   } else {
     emailEl.style.display = 'none';
   }
@@ -2773,8 +2814,7 @@ function renderManage() {
       if (h.total) deltaParts.push(`<span style="color:var(--ink-soft)">${h.total} total on file</span>`);
     } else if (h.type === 'email') {
       if (h.matched) deltaParts.push(`<span class="added">${h.matched} invoices matched</span>`);
-      if (h.withReminders) deltaParts.push(`<span style="color:var(--ink-soft)">${h.withReminders} w/ reminders</span>`);
-      if (h.withOverdueReminders) deltaParts.push(`<span style="color:var(--rust)">${h.withOverdueReminders} w/ overdue</span>`);
+      if (h.linesAdded) deltaParts.push(`<span style="color:var(--ink-soft)">${h.linesAdded} email entries added</span>`);
     }
     return `
       <div class="history-item">
@@ -2795,7 +2835,7 @@ function renderManage() {
 
 function exportLedgerCSV() {
   const rows = getFilteredSorted();
-  const headers = ['Date','Transaction Type','Num','Name','Memo/Description','Due Date','Amount','Open Balance','Sales Rep','In Collections','Collections Date','Reminder Count','Reminder Last Sent','Overdue Reminder Count','Overdue Reminder Last Sent','Notes'];
+  const headers = ['Date','Transaction Type','Num','Name','Memo/Description','Due Date','Amount','Open Balance','Sales Rep','In Collections','Collections Date','Notes'];
   const csv = [headers.join(',')].concat(rows.map(r => [
     csvCell(fmtDate(r.date)),
     csvCell(r.transactionType || 'Invoice'),
@@ -2808,10 +2848,6 @@ function exportLedgerCSV() {
     csvCell(r.salesRep),
     r.inCollections ? 'Yes' : 'No',
     csvCell(fmtDate(r.collectionsDate)),
-    r.reminderCount || 0,
-    csvCell(fmtDate(r.reminderLastSent)),
-    r.overdueReminderCount || 0,
-    csvCell(fmtDate(r.overdueReminderLastSent)),
     csvCell(r.notes)
   ].join(','))).join('\n');
   downloadFile(csv, 'overdue_ledger_' + dateStamp() + '.csv', 'text/csv');
@@ -2831,10 +2867,6 @@ function exportLedgerXLSX() {
     'Sales Rep':                  r.salesRep || '',
     'In Collections':             r.inCollections ? 'Yes' : 'No',
     'Collections Date':           fmtDate(r.collectionsDate),
-    'Reminder Count':             r.reminderCount || 0,
-    'Reminder Last Sent':         fmtDate(r.reminderLastSent),
-    'Overdue Reminder Count':     r.overdueReminderCount || 0,
-    'Overdue Reminder Last Sent': fmtDate(r.overdueReminderLastSent),
     'Notes':                      r.notes || ''
   }));
   const ws = XLSX.utils.json_to_sheet(data);
@@ -2877,16 +2909,7 @@ function openInvoiceEditor(num) {
     collectionsDate:  inv.collectionsDate || ''
   };
   document.getElementById('invModalTitle').textContent = `Invoice ${inv.num}`;
-  // Show reminder info if present
-  const rc = inv.reminderCount || 0, orc = inv.overdueReminderCount || 0;
-  let remSummary = '';
-  if (rc > 0 || orc > 0) {
-    const parts = [];
-    if (rc > 0) parts.push(`${rc} due reminder${rc===1?'':'s'}${inv.reminderLastSent ? ' (last ' + fmtDate(inv.reminderLastSent) + ')' : ''}`);
-    if (orc > 0) parts.push(`${orc} overdue reminder${orc===1?'':'s'}${inv.overdueReminderLastSent ? ' (last ' + fmtDate(inv.overdueReminderLastSent) + ')' : ''}`);
-    remSummary = ' · ' + parts.join(' · ');
-  }
-  document.getElementById('invModalSub').textContent = `${inv.name} · Invoice date ${fmtDate(inv.date)} · ${fmtMoney(inv.openBalance)} open${remSummary}`;
+  document.getElementById('invModalSub').textContent = `${inv.name} · Invoice date ${fmtDate(inv.date)} · ${fmtMoney(inv.openBalance)} open`;
 
   const chk = document.getElementById('invCollChk');
   const dateField = document.getElementById('collDateField');
@@ -3147,21 +3170,6 @@ function contactActionsHtml(inv) {
 }
 
 
-function formatReminderCell(r) {
-  const rc = r.reminderCount || 0;
-  const orc = r.overdueReminderCount || 0;
-  if (rc === 0 && orc === 0) return '<span style="color: var(--line);">—</span>';
-  const parts = [];
-  if (rc > 0) {
-    const dt = r.reminderLastSent ? ' · ' + fmtDate(r.reminderLastSent) : '';
-    parts.push(`<div style="font-size:11px; color:var(--ink-soft);"><span style="display:inline-block; min-width:14px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--bark-deep);">${rc}</span> due${dt}</div>`);
-  }
-  if (orc > 0) {
-    const dt = r.overdueReminderLastSent ? ' · ' + fmtDate(r.overdueReminderLastSent) : '';
-    parts.push(`<div style="font-size:11px; color:var(--rust-deep);"><span style="display:inline-block; min-width:14px; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600;">${orc}</span> overdue${dt}</div>`);
-  }
-  return parts.join('');
-}
 
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
@@ -3262,7 +3270,7 @@ document.querySelectorAll('#ledgerTable thead th[data-sort]').forEach(th => {
       STATE.currentSort.dir = STATE.currentSort.dir === 'asc' ? 'desc' : 'asc';
     } else {
       STATE.currentSort.key = k;
-      STATE.currentSort.dir = (['amount','openBalance','date','dueDate','collections','reminders'].includes(k)) ? 'desc' : 'asc';
+      STATE.currentSort.dir = (['amount','openBalance','date','dueDate','collections'].includes(k)) ? 'desc' : 'asc';
     }
     renderLedger();
   });
