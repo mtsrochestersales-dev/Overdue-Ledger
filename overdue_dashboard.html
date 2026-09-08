@@ -2154,25 +2154,37 @@ function mergeQBOData(newRecords, filename) {
     }
   });
 
-  let removed = 0;
+  let removed = 0, keptAsWrittenOff = 0;
   STATE.invoices.forEach(inv => {
     if (!newNums.has(inv.num)) {
-      // Archive anything worth keeping
-      if (inv.notes || inv.inCollections || inv.salesRep || inv.demandLetterSent || inv.reminderCount || inv.overdueReminderCount) {
-        STATE.archived[inv.num] = {
-          notes:                   inv.notes || '',
-          salesRep:                inv.salesRep || '',
-          inCollections:           !!inv.inCollections,
-          collectionsDate:         inv.collectionsDate || '',
-          demandLetterSent:        !!inv.demandLetterSent,
-          demandLetterDate:        inv.demandLetterDate || '',
-          reminderCount:           inv.reminderCount || 0,
-          reminderLastSent:        inv.reminderLastSent || '',
-          overdueReminderCount:    inv.overdueReminderCount || 0,
-          overdueReminderLastSent: inv.overdueReminderLastSent || ''
+      // If the invoice is in collections, KEEP it in the main list marked as written off.
+      // The last-known open balance stays frozen (we don't touch it).
+      if (inv.inCollections) {
+        const carried = {
+          ...inv,
+          writtenOff: true,
+          lastUpdated: now
         };
+        result.push(carried);
+        keptAsWrittenOff++;
+      } else {
+        // Not in collections → archive as before (preserves notes for future reference)
+        if (inv.notes || inv.salesRep || inv.demandLetterSent || inv.reminderCount || inv.overdueReminderCount) {
+          STATE.archived[inv.num] = {
+            notes:                   inv.notes || '',
+            salesRep:                inv.salesRep || '',
+            inCollections:           false,
+            collectionsDate:         inv.collectionsDate || '',
+            demandLetterSent:        !!inv.demandLetterSent,
+            demandLetterDate:        inv.demandLetterDate || '',
+            reminderCount:           inv.reminderCount || 0,
+            reminderLastSent:        inv.reminderLastSent || '',
+            overdueReminderCount:    inv.overdueReminderCount || 0,
+            overdueReminderLastSent: inv.overdueReminderLastSent || ''
+          };
+        }
+        removed++;
       }
-      removed++;
     }
   });
 
