@@ -608,6 +608,11 @@
     border-color: var(--bark-deep);
   }
 
+  /* Written-off row (in collections but no longer in QBO) */
+  tbody tr.written-off { opacity: 0.55; background: repeating-linear-gradient(45deg, var(--paper) 0 6px, var(--paper-2) 6px 12px); }
+  tbody tr.written-off td { color: var(--ink-soft); }
+  tbody tr.written-off .client { font-style: italic; }
+
   /* -------- Tablet / iPad (720px - 1023px) -------- */
   @media (max-width: 1023px) and (min-width: 721px) {
     header.masthead { padding: 20px 24px 16px; }
@@ -1025,6 +1030,7 @@
     <div class="checkbox-row">
       <input type="checkbox" id="invCollChk" />
       <label for="invCollChk">Sent to Collections</label>
+      <span id="invCollWrittenOffHint" style="display:none; margin-left: 12px; font-size: 11px; color: var(--rust-deep); font-style: italic;">Unchecking this will remove this written-off invoice from the tool.</span>
     </div>
 
     <label class="field" id="collDateField" style="display:none">
@@ -1121,7 +1127,7 @@ const GOOGLE_CONFIG = {
   SHEET_NAME:    'Monster Tree — Overdue Ledger',
   SCOPES:        'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
   TABS: {
-    INVOICES:  { name: 'Invoices',  headers: ['num','date','transactionType','name','memo','dueDate','amount','openBalance','salesRep','notes','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent','firstSeen','lastUpdated'] },
+    INVOICES:  { name: 'Invoices',  headers: ['num','date','transactionType','name','memo','dueDate','amount','openBalance','salesRep','notes','inCollections','collectionsDate','demandLetterSent','demandLetterDate','reminderCount','reminderLastSent','overdueReminderCount','overdueReminderLastSent','writtenOff','firstSeen','lastUpdated'] },
     CONTACTS:  { name: 'Contacts',  headers: ['invoiceNum','clientLast','clientFirst','clientMobile','clientPhone'] },
     SENDERS:   { name: 'Senders',   headers: ['name'] },
     HISTORY:   { name: 'History',   headers: ['when','type','filename','added','updated','removed','notesPreserved','collectionsPreserved','mappedCount','total','totalAfter','invoiceCount'] },
@@ -1521,6 +1527,7 @@ async function loadState() {
       openBalance: parseNumberLoose(r.openBalance),
       inCollections: r.inCollections === true || r.inCollections === 'TRUE' || r.inCollections === 'true',
       demandLetterSent: r.demandLetterSent === true || r.demandLetterSent === 'TRUE' || r.demandLetterSent === 'true',
+      writtenOff: r.writtenOff === true || r.writtenOff === 'TRUE' || r.writtenOff === 'true',
       reminderCount: parseNumberLoose(r.reminderCount),
       overdueReminderCount: parseNumberLoose(r.overdueReminderCount),
       reminderLastSent: r.reminderLastSent || '',
@@ -2176,12 +2183,12 @@ function mergeQBOData(newRecords, filename) {
   const totalAfter = result.reduce((s, r) => s + (r.openBalance || 0), 0);
   STATE.history.unshift({
     when: now, type: 'qbo', filename,
-    added, updated, removed, notesPreserved, collectionsPreserved, totalAfter,
+    added, updated, removed, notesPreserved, collectionsPreserved, keptAsWrittenOff, totalAfter,
     invoiceCount: result.length
   });
   STATE.history = STATE.history.slice(0, 100);
 
-  return { added, updated, removed, notesPreserved, collectionsPreserved };
+  return { added, updated, removed, notesPreserved, collectionsPreserved, keptAsWrittenOff };
 }
 
 function mergeSalesRepData(repMap, filename) {
@@ -2225,6 +2232,7 @@ async function handleQBOFile(file) {
     if (result.removed) parts.push(`${result.removed} removed`);
     if (result.notesPreserved) parts.push(`${result.notesPreserved} notes preserved`);
     if (result.collectionsPreserved) parts.push(`${result.collectionsPreserved} collections preserved`);
+    if (result.keptAsWrittenOff) parts.push(`${result.keptAsWrittenOff} kept as written-off`);
     showStatus('QBO import done · ' + (parts.join(' · ') || 'no changes'), 'success');
     renderAll();
   } catch (e) {
@@ -2361,11 +2369,14 @@ function renderAll() {
 }
 
 function renderHeaderMeta() {
-  document.getElementById('ledgerCount').textContent = STATE.invoices.length;
-  const total = STATE.invoices.reduce((s, r) => s + (r.openBalance || 0), 0);
+  // Ledger count and grand total exclude written-off invoices (they only appear on Collections tab)
+  const activeInvoices = STATE.invoices.filter(r => !r.writtenOff);
+  document.getElementById('ledgerCount').textContent = activeInvoices.length;
+  const total = activeInvoices.reduce((s, r) => s + (r.openBalance || 0), 0);
   document.getElementById('grandTotal').textContent = fmtMoney(total);
   const last = STATE.meta.lastQboUpload;
   document.getElementById('lastUploadDisplay').textContent = last ? 'Last upload · ' + fmtDateTime(last) : 'No data yet';
+  // Collections badge counts everything in collections (including written-off)
   const collCount = STATE.invoices.filter(r => r.inCollections).length;
   document.getElementById('collectionsCount').textContent = collCount;
 }
@@ -2452,7 +2463,7 @@ function renderLedger() {
   // Update filtered totals bar
   const filteredTotal = rows.reduce((s, r) => s + (r.openBalance || 0), 0);
   document.getElementById('ledgerFilteredCount').textContent = rows.length;
-  document.getElementById('ledgerTotalCount').textContent = STATE.invoices.length;
+  document.getElementById('ledgerTotalCount').textContent = STATE.invoices.filter(r => !r.writtenOff).length;
   document.getElementById('ledgerFilteredTotal').textContent = fmtMoney(filteredTotal);
   // Show a description of which filters are active
   const activeFilterParts = [];
@@ -2721,8 +2732,22 @@ function renderCollections() {
     const db = parseAnyDate(b.collectionsDate)?.getTime() || 0;
     return db - da; // most recent first
   });
-  const total = inv.reduce((s, r) => s + (r.openBalance || 0), 0);
-  document.getElementById('collectionsMeta').textContent = `${inv.length} invoice${inv.length === 1 ? '' : 's'} · ${fmtMoney(total)} total`;
+  // Split: active (still in QBO) vs written-off (no longer in QBO but still in collections)
+  const activeCollections = inv.filter(r => !r.writtenOff);
+  const writtenOffCollections = inv.filter(r => r.writtenOff);
+  const activeTotal = activeCollections.reduce((s, r) => s + (r.openBalance || 0), 0);
+  const writtenOffTotal = writtenOffCollections.reduce((s, r) => s + (r.openBalance || 0), 0);
+  const grandTotal = activeTotal + writtenOffTotal;
+
+  const meta = [`${inv.length} invoice${inv.length === 1 ? '' : 's'}`];
+  if (writtenOffCollections.length > 0) {
+    meta.push(`${activeCollections.length} active (${fmtMoney(activeTotal)})`);
+    meta.push(`${writtenOffCollections.length} written off (${fmtMoney(writtenOffTotal)})`);
+    meta.push(`${fmtMoney(grandTotal)} total`);
+  } else {
+    meta.push(`${fmtMoney(grandTotal)} total`);
+  }
+  document.getElementById('collectionsMeta').textContent = meta.join(' · ');
 
   const body = document.getElementById('collectionsBody');
   if (inv.length === 0) {
@@ -2735,12 +2760,16 @@ function renderCollections() {
   body.innerHTML = inv.map(r => {
     const cd = parseAnyDate(r.collectionsDate);
     const days = cd ? Math.floor((now - cd.getTime()) / 86400000) : null;
+    const rowClass = r.writtenOff ? 'in-collections written-off' : 'in-collections';
+    const writtenOffTag = r.writtenOff
+      ? '<span class="collections-badge" style="background: var(--ink-soft); color: var(--paper); margin-left: 6px; font-size: 9px;">WRITTEN OFF</span>'
+      : '';
     return `
-      <tr class="in-collections">
+      <tr class="${rowClass}">
         <td>${r.collectionsDate ? fmtDate(r.collectionsDate) : '—'}</td>
         <td>${fmtDate(r.date)}</td>
         <td class="num">${escapeHtml(r.num)}</td>
-        <td class="client">${escapeHtml(r.name)}${contactActionsHtml(r)}</td>
+        <td class="client">${escapeHtml(r.name)}${contactActionsHtml(r)}${writtenOffTag}</td>
         <td class="num">${fmtMoney(r.openBalance)}</td>
         <td>${escapeHtml(r.salesRep || '—')}</td>
         <td class="num">${days !== null ? days + ' d' : '—'}</td>
@@ -2805,6 +2834,7 @@ function renderManage() {
       if (h.removed) deltaParts.push(`<span class="removed">-${h.removed} removed</span>`);
       if (h.notesPreserved) deltaParts.push(`<span style="color:var(--bark-deep)">${h.notesPreserved} notes kept</span>`);
       if (h.collectionsPreserved) deltaParts.push(`<span style="color:var(--rust)">${h.collectionsPreserved} coll. kept</span>`);
+      if (h.keptAsWrittenOff) deltaParts.push(`<span style="color:var(--ink-soft)">${h.keptAsWrittenOff} written off kept</span>`);
     } else if (h.type === 'salesRep') {
       deltaParts.push(`<span class="added">${h.updated} reps assigned</span>`);
       if (h.mappedCount) deltaParts.push(`<span style="color:var(--ink-soft)">from ${h.mappedCount} mappings</span>`);
@@ -2909,13 +2939,16 @@ function openInvoiceEditor(num) {
     collectionsDate:  inv.collectionsDate || ''
   };
   document.getElementById('invModalTitle').textContent = `Invoice ${inv.num}`;
-  document.getElementById('invModalSub').textContent = `${inv.name} · Invoice date ${fmtDate(inv.date)} · ${fmtMoney(inv.openBalance)} open`;
+  const woLabel = inv.writtenOff ? ' · WRITTEN OFF IN QBO' : '';
+  document.getElementById('invModalSub').textContent = `${inv.name} · Invoice date ${fmtDate(inv.date)} · ${fmtMoney(inv.openBalance)} open${woLabel}`;
+  document.getElementById('invModalSub').style.color = inv.writtenOff ? 'var(--rust-deep)' : '';
 
   const chk = document.getElementById('invCollChk');
   const dateField = document.getElementById('collDateField');
   const dateInput = document.getElementById('invCollDate');
 
   chk.checked = !!inv.inCollections;
+  document.getElementById('invCollWrittenOffHint').style.display = inv.writtenOff ? 'inline' : 'none';
   dateField.style.display = chk.checked ? 'block' : 'none';
   dateInput.value = inv.collectionsDate || (chk.checked ? new Date().toISOString().slice(0,10) : '');
 
@@ -2956,22 +2989,51 @@ async function saveInvoiceEdits() {
   if (!inv) return;
   const chk = document.getElementById('invCollChk').checked;
   const dateVal = document.getElementById('invCollDate').value;
+  const wasWrittenOff = !!inv.writtenOff;
+  const wasInCollections = !!inv.inCollections;
+
   inv.notes = document.getElementById('invNotes').value;
   inv.inCollections = chk;
   inv.collectionsDate = chk ? (dateVal || new Date().toISOString().slice(0,10)) : '';
   inv.lastUpdated = nowISO();
+
+  // Special case: written-off invoice being removed from collections → archive it
+  // (it's no longer on the QBO file, and it's no longer in collections, so it should disappear)
+  const shouldArchive = wasWrittenOff && wasInCollections && !chk;
+
   const ok = await saveSingleInvoice(STATE.editingNum, STATE.editingSnapshot);
   if (!ok) {
     // User cancelled due to stale data — modal stays open with the now-current values
     showStatus('Save cancelled — sheet had newer changes, your view has been updated.', 'error');
-    // Refresh modal with new values
     const num = STATE.editingNum;
     closeInvoiceEditor();
     openInvoiceEditor(num);
     return;
   }
-  closeInvoiceEditor();
-  showStatus('Saved', 'success');
+
+  if (shouldArchive) {
+    // Move to archive (preserve notes for reference) and remove from active list
+    STATE.archived[inv.num] = {
+      notes:                   inv.notes || '',
+      salesRep:                inv.salesRep || '',
+      inCollections:           false,
+      collectionsDate:         inv.collectionsDate || '',
+      demandLetterSent:        !!inv.demandLetterSent,
+      demandLetterDate:        inv.demandLetterDate || '',
+      reminderCount:           inv.reminderCount || 0,
+      reminderLastSent:        inv.reminderLastSent || '',
+      overdueReminderCount:    inv.overdueReminderCount || 0,
+      overdueReminderLastSent: inv.overdueReminderLastSent || ''
+    };
+    STATE.invoices = STATE.invoices.filter(r => r.num !== inv.num);
+    // Save the full state since we changed multiple things
+    await saveState();
+    closeInvoiceEditor();
+    showStatus(`Invoice ${inv.num} removed from Collections and archived (was written off).`, 'success');
+  } else {
+    closeInvoiceEditor();
+    showStatus('Saved', 'success');
+  }
   renderAll();
 }
 
